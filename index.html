@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>E-Attendance System with QR Code | FUDMA GET 411 Group 6</title>
+  <title>FUDMA E-Attendance System with QR Code</title>
   
   <!-- SEO & Academic Metadata -->
-  <meta name="description" content="E-Attendance System with QR Code developed by Group 6 for GET 411 Artificial Intelligence Mini Project at Federal University Dutsin-Ma (FUDMA), Nigeria." />
+  <meta name="description" content="Automated academic attendance recording and late-arrival detection application developed by Group 6 for GET 411 Artificial Intelligence Mini Project at Federal University Dutsin-Ma." />
+  <meta property="og:title" content="FUDMA E-Attendance System with QR Code" />
+  <meta property="og:description" content="Automated academic attendance recording and late-arrival detection application developed by Group 6 for GET 411 Artificial Intelligence Mini Project at Federal University Dutsin-Ma." />
   <meta name="author" content="Group 6, GET 411, FUDMA" />
   <meta name="theme-color" content="#0b3d91" />
 
@@ -310,6 +312,19 @@
 
       <div id="scanner-viewfinder" class="scanner-viewport">
         <!-- Video stream is injected here by Html5Qrcode -->
+      </div>
+
+      <div style="text-align: center; margin-top: 10px;">
+        <label style="font-size: 0.82rem; color: var(--primary-700); cursor: pointer; text-decoration: underline; font-weight: 500;">
+          📁 Or select / upload a photo of the QR code
+          <input 
+            type="file" 
+            id="scanner-file-input" 
+            accept="image/*" 
+            style="display: none;" 
+            onchange="if (this.files && this.files[0]) { window.attendanceEngine.scanImageFile(this.files[0], (r) => { window.studentCtrl.closeScannerModal(); window.studentCtrl.displayAttendanceResult(r); window.studentCtrl.render(); }, (e) => { const err = document.getElementById('scanner-error-msg'); if (err) { err.innerText = e.message; err.style.display = 'block'; } }); }" 
+          />
+        </label>
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">

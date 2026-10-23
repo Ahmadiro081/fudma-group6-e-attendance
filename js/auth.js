@@ -43,6 +43,18 @@ class AuthService {
     return this.currentUser && this.currentUser.role === role;
   }
 
+  async _withTimeout(promise, ms = 7000, errorMsg = 'Network operation timed out. Continuing with presentation engine.') {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(errorMsg)), ms);
+    });
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   async login(email, password) {
     if (!email || !password) {
       throw new Error('Please enter both email and password.');
@@ -53,7 +65,11 @@ class AuthService {
     // If real Firebase Auth is active
     if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase' && window.firebaseManager.auth) {
       try {
-        const userCredential = await window.firebaseManager.auth.signInWithEmailAndPassword(cleanEmail, password);
+        const userCredential = await this._withTimeout(
+          window.firebaseManager.auth.signInWithEmailAndPassword(cleanEmail, password),
+          7000,
+          'Firebase Authentication timed out.'
+        );
         const fbUser = userCredential.user;
         const profile = await window.dbService.getUserById(fbUser.uid) || await window.dbService.getUserByEmail(cleanEmail);
         
@@ -79,6 +95,9 @@ class AuthService {
 
         return this.currentUser;
       } catch (fbErr) {
+        if (window.firebaseManager && typeof window.firebaseManager.handleApiError === 'function') {
+          window.firebaseManager.handleApiError(fbErr);
+        }
         console.warn('Firebase signIn failed, attempting local DB authentication:', fbErr);
         // Continue to local verification if demo accounts are used
       }
@@ -95,8 +114,7 @@ class AuthService {
     }
 
     // Standard demo password verification
-    // For demo/classroom presentations, accept password matching or standard format
-    const validPasswords = ['admin123', 'lecturer123', 'student123', 'password', 'fudma2026'];
+    const validPasswords = ['admin123', 'lecturer123', 'student123', 'password', 'fudma2026', '123456'];
     const isStandardDemoPass = validPasswords.includes(password.toLowerCase());
     
     if (!isStandardDemoPass && password !== '123456') {
@@ -116,6 +134,81 @@ class AuthService {
     });
 
     return this.currentUser;
+  }
+
+  /**
+   * Student Self-Registration
+   * Fast, reliable registration for assessment & student onboarding
+   */
+  async registerStudent({ fullName, matricNumber, email, password, level = '400L', department = 'Faculty of Engineering' }) {
+    if (!fullName || !matricNumber || !email) {
+      throw new Error('Full Name, Matriculation Number, and Email are required.');
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanMatric = matricNumber.trim().toUpperCase();
+
+    // Check existing
+    const existing = await window.dbService.getUserByEmail(cleanEmail);
+    if (existing) {
+      throw new Error('An account with this email address already exists.');
+    }
+
+    let uid = 'student_' + Date.now().toString(36);
+
+    // Try Firebase Auth if active
+    if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase' && window.firebaseManager.auth) {
+      try {
+        const userCredential = await this._withTimeout(
+          window.firebaseManager.auth.createUserWithEmailAndPassword(cleanEmail, password || 'student123'),
+          7000,
+          'Firebase account creation timed out. Switching to local profile.'
+        );
+        if (userCredential && userCredential.user) {
+          uid = userCredential.user.uid;
+        }
+      } catch (fbErr) {
+        if (window.firebaseManager && typeof window.firebaseManager.handleApiError === 'function') {
+          window.firebaseManager.handleApiError(fbErr);
+        }
+        console.warn('Firebase registration failed, proceeding with local profile creation:', fbErr);
+      }
+    }
+
+    const newStudent = {
+      uid,
+      fullName: fullName.trim(),
+      matricNumber: cleanMatric,
+      email: cleanEmail,
+      role: 'student',
+      level: level || '400L',
+      department: department || 'Engineering',
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+
+    await window.dbService.saveUser(newStudent);
+
+    // Automatically enroll in GET 411 AI Mini Project
+    const course = await window.dbService.getCourseById('course_get411');
+    if (course && !course.enrolledStudentIds.includes(uid)) {
+      course.enrolledStudentIds.push(uid);
+      await window.dbService.saveCourse(course);
+    }
+
+    this.currentUser = newStudent;
+    sessionStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(this.currentUser));
+    this._notifyListeners();
+
+    await window.dbService.addAuditLog({
+      eventType: 'STUDENT_REGISTERED',
+      actorUid: uid,
+      actorName: newStudent.fullName,
+      targetId: uid,
+      metadata: `Student ${newStudent.fullName} (${newStudent.matricNumber}) registered.`
+    });
+
+    return newStudent;
   }
 
   /**

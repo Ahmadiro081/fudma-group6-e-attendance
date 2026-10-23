@@ -18,13 +18,24 @@ class StudentController {
             <div style="font-size: 3rem; margin-bottom: 16px;">🎓</div>
             <h2>Student Portal Sign-In Required</h2>
             <p>Please authenticate as a registered FUDMA student to view your course enrollments and mark attendance.</p>
-            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap;">
-              <button class="btn btn-primary" onclick="window.authService.quickSwitch('student1')">
-                Switch to Student 1 (Ibrahim Musa)
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="window.studentCtrl.openStudentSignUpModal()">
+                📝 Register / Sign Up as New Student
               </button>
-              <button class="btn btn-secondary" onclick="window.authService.quickSwitch('student2')">
-                Switch to Student 2 (Fatima Aliyu)
+              <button class="btn btn-secondary" onclick="window.app.showLoginModal('student')">
+                🔑 Sign In with Existing Account
               </button>
+            </div>
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--gray-200);">
+              <small style="color: var(--gray-500); display: block; margin-bottom: 8px;">Or instant demo switch:</small>
+              <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student1')">
+                  Student 1 (Ibrahim Musa)
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student2')">
+                  Student 2 (Fatima Aliyu)
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -46,25 +57,32 @@ class StudentController {
 
     container.innerHTML = `
       <!-- Welcome Header Card -->
-      <div class="hero-section" style="padding: 28px; margin-bottom: 24px; background: linear-gradient(135deg, #ffffff 0%, var(--primary-50) 100%);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
+      <div class="hero-section student-hero-card">
+        <div class="student-hero-layout">
+          <div class="student-hero-content">
             <div class="hero-banner-ribbon">
               <span>🎓 FUDMA Student Portal</span> • <span>Session 2026/2027</span>
             </div>
-            <h2 style="font-size: 1.8rem; color: var(--primary-900); margin-bottom: 6px;">
+            <h2 class="student-welcome-title">
               Welcome, ${user.fullName}
             </h2>
-            <p style="font-size: 0.95rem; color: var(--gray-600); margin: 0;">
-              Matriculation Number: <strong style="color: var(--primary-800);">${user.matricNumber || 'FUDMA/2022/UG/ENG/0061'}</strong> | 
-              Department: <strong>${user.department || 'Engineering'}</strong> | Level: <strong>${user.level || '400L'}</strong>
-            </p>
+            <div class="student-meta-list">
+              <span class="student-meta-item">
+                Matric No: <strong>${user.matricNumber || 'FUDMA/2022/UG/ENG/0061'}</strong>
+              </span>
+              <span class="student-meta-item">
+                Dept: <strong>${user.department || 'Engineering'}</strong>
+              </span>
+              <span class="student-meta-item">
+                Level: <strong>${user.level || '400L'}</strong>
+              </span>
+            </div>
           </div>
-          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-            <button class="btn btn-primary btn-lg" onclick="window.studentCtrl.openScannerModal()">
+          <div class="student-hero-actions">
+            <button class="btn btn-primary btn-lg student-action-btn" onclick="window.studentCtrl.openScannerModal()">
               📷 Scan Lecture QR Code
             </button>
-            <button class="btn btn-secondary btn-lg" onclick="window.studentCtrl.openManualCodeModal()">
+            <button class="btn btn-secondary btn-lg student-action-btn" onclick="window.studentCtrl.openManualCodeModal()">
               ⌨️ Enter Lecture Code
             </button>
           </div>
@@ -72,14 +90,14 @@ class StudentController {
       </div>
 
       <!-- Quick Metrics -->
-      <div class="metrics-row">
+      <div class="metrics-row student-metrics-grid">
         <div class="metric-card primary">
           <div class="metric-label">Enrolled Courses <span>📚</span></div>
           <div class="metric-value">${enrolledCourses.length}</div>
           <div class="metric-sub">Registered for active semester</div>
         </div>
         <div class="metric-card accent">
-          <div class="metric-label">Total Verified Check-Ins <span>✅</span></div>
+          <div class="metric-label">Verified Check-Ins <span>✅</span></div>
           <div class="metric-value">${totalCheckIns}</div>
           <div class="metric-sub">Across all lecture sessions</div>
         </div>
@@ -103,23 +121,21 @@ class StudentController {
           </div>
         </div>
         <div class="panel-body">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          <div class="enrolled-courses-grid">
             ${enrolledCourses.length > 0 ? enrolledCourses.map(course => {
               const courseAttendance = myAttendance.filter(a => a.courseId === course.id);
               const presentOrLate = courseAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
-              // Calculate rough % based on past sessions for this course
-              const percentage = 100; // default for active semester
               return `
-                <div style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: 16px;">
-                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <div class="course-summary-card">
+                  <div class="course-summary-header">
                     <div>
-                      <span class="badge-group6" style="margin-bottom: 4px; display: inline-block;">${course.courseCode}</span>
-                      <h4 style="font-size: 1rem; color: var(--gray-900);">${course.courseTitle}</h4>
+                      <span class="badge-group6 course-badge">${course.courseCode}</span>
+                      <h4 class="course-title-text">${course.courseTitle}</h4>
                     </div>
-                    <span class="status-badge status-present">${presentOrLate} Check-Ins</span>
+                    <span class="status-badge status-present course-checkin-count">${presentOrLate} Check-Ins</span>
                   </div>
-                  <div style="font-size: 0.8rem; color: var(--gray-600); margin-top: 8px;">
-                    Department: ${course.department || 'Faculty of Engineering'} | Units: ${course.creditUnits || 3}
+                  <div class="course-meta-footer">
+                    <span>${course.department || 'Faculty of Engineering'}</span> • <span>Units: ${course.creditUnits || 3}</span>
                   </div>
                 </div>
               `;
@@ -137,14 +153,17 @@ class StudentController {
             <h2>Your Official Attendance History</h2>
           </div>
         </div>
-        <div class="panel-body">
-          <div class="table-responsive">
+        <div class="panel-body" style="padding: 12px 16px;">
+          <div class="mobile-table-hint">
+            <span>↔ Swipe horizontally to inspect complete attendance records</span>
+          </div>
+          <div class="table-responsive student-table-wrapper">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th style="width: 50px;">S/N</th>
-                  <th>Course Code</th>
-                  <th>Check-In Time</th>
+                  <th style="width: 44px; text-align: center;">S/N</th>
+                  <th>Course</th>
+                  <th>Check-In</th>
                   <th>Date & Timestamp</th>
                   <th>Status</th>
                   <th>Verification Mode</th>
@@ -153,17 +172,17 @@ class StudentController {
               <tbody>
                 ${myAttendance.length > 0 ? myAttendance.map((rec, idx) => `
                   <tr>
-                    <td><strong>${idx + 1}</strong></td>
-                    <td><strong>${rec.courseCode}</strong></td>
-                    <td><span style="font-family: var(--font-mono); font-weight: 700;">${rec.checkInTime}</span></td>
-                    <td><small style="color: var(--gray-600);">${new Date(rec.timestamp).toLocaleDateString()} ${new Date(rec.timestamp).toLocaleTimeString()}</small></td>
+                    <td style="text-align: center;"><strong>${idx + 1}</strong></td>
+                    <td><strong class="course-code-cell">${rec.courseCode}</strong></td>
+                    <td><span class="check-in-time-cell">${rec.checkInTime}</span></td>
+                    <td class="timestamp-cell"><small>${new Date(rec.timestamp).toLocaleDateString()} ${new Date(rec.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small></td>
                     <td>
                       <span class="status-badge ${rec.status === 'present' ? 'status-present' : rec.status === 'late' ? 'status-late' : 'status-absent'}">
                         ${rec.status === 'present' ? 'Present (On-Time)' : rec.status === 'late' ? 'Late Arrival' : 'Absent'}
                       </span>
                     </td>
                     <td>
-                      <small style="color: var(--gray-500); text-transform: uppercase;">
+                      <small class="verification-badge">
                         ${rec.verificationMethod === 'qr_scan' ? '📷 QR Scan' : rec.verificationMethod === 'manual_code' ? '⌨️ Manual Code' : '⚖️ Finalized'}
                       </small>
                     </td>
@@ -248,19 +267,133 @@ class StudentController {
     e.preventDefault();
     const code = document.getElementById('manual-code-input').value.trim();
     const errBox = document.getElementById('manual-code-error');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : 'Submit Attendance';
 
-    await window.attendanceEngine.submitManualCode(
-      code,
-      (result) => {
-        window.app.closeModal();
-        this.displayAttendanceResult(result);
-        this.render();
-      },
-      (err) => {
-        errBox.innerText = err.message;
+    if (errBox) errBox.style.display = 'none';
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Verifying Code...';
+    }
+
+    try {
+      await window.attendanceEngine.submitManualCode(
+        code,
+        (result) => {
+          window.app.closeModal();
+          this.displayAttendanceResult(result);
+          this.render();
+        },
+        (err) => {
+          if (errBox) {
+            errBox.innerText = err.message || 'Submission denied.';
+            errBox.style.display = 'block';
+          }
+        }
+      );
+    } catch (err) {
+      if (errBox) {
+        errBox.innerText = err.message || 'Submission error.';
         errBox.style.display = 'block';
       }
-    );
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    }
+  }
+
+  openStudentSignUpModal() {
+    window.app.openModal('Student Registration / Sign Up', `
+      <form id="student-signup-form" onsubmit="window.studentCtrl.handleStudentSignUp(event)">
+        <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 14px;">
+          Register with your official FUDMA student details to access the portal and mark attendance:
+        </p>
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="su-fullname" class="form-control" placeholder="e.g. Bello Haruna" required />
+        </div>
+        <div class="form-group">
+          <label>Matriculation Number</label>
+          <input type="text" id="su-matric" class="form-control" placeholder="e.g. FUDMA/2022/UG/ENG/0070" required />
+        </div>
+        <div class="form-group">
+          <label>Institutional Email</label>
+          <input type="email" id="su-email" class="form-control" placeholder="e.g. b.haruna@fudma.edu.ng" required />
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Level</label>
+            <select id="su-level" class="form-control">
+              <option value="400L" selected>400 Level (Final Year)</option>
+              <option value="300L">300 Level</option>
+              <option value="200L">200 Level</option>
+              <option value="100L">100 Level</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Department</label>
+            <input type="text" id="su-dept" class="form-control" value="Faculty of Engineering" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="su-password" class="form-control" placeholder="••••••••" value="student123" required />
+          <span class="form-help">Default demo password is pre-filled (student123).</span>
+        </div>
+        <div id="su-error-msg" style="color: var(--danger-solid); font-size: 0.85rem; margin-top: 6px; display: none;"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="window.app.closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Complete Registration</button>
+        </div>
+      </form>
+    `);
+  }
+
+  async handleStudentSignUp(e) {
+    e.preventDefault();
+    const fullName = document.getElementById('su-fullname').value.trim();
+    const matricNumber = document.getElementById('su-matric').value.trim();
+    const email = document.getElementById('su-email').value.trim();
+    const level = document.getElementById('su-level').value;
+    const department = document.getElementById('su-dept').value.trim();
+    const password = document.getElementById('su-password').value;
+    const errBox = document.getElementById('su-error-msg');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+
+    if (errBox) errBox.style.display = 'none';
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Registering...';
+    }
+
+    try {
+      const student = await window.authService.registerStudent({
+        fullName,
+        matricNumber,
+        email,
+        password,
+        level,
+        department
+      });
+
+      window.app.closeModal();
+      window.app.showToast(`Registration successful! Welcome, ${student.fullName}.`, 'success');
+      this.render();
+    } catch (err) {
+      if (errBox) {
+        errBox.innerText = err.message || 'Registration failed.';
+        errBox.style.display = 'block';
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Complete Registration';
+      }
+    }
   }
 
   displayAttendanceResult(result) {

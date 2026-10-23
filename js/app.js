@@ -188,6 +188,12 @@ class Application {
           <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 14px;">
             Sign In
           </button>
+
+          <div style="text-align: center; margin-top: 12px;">
+            <button type="button" class="btn btn-sm" style="background: transparent; color: var(--primary-700); font-weight: 600; text-decoration: underline;" onclick="window.app.closeModal(); window.studentCtrl.openStudentSignUpModal();">
+              🎓 New student? Click here to register account
+            </button>
+          </div>
         </form>
 
         <!-- Quick Demo Switcher Section for Presentation -->
@@ -231,6 +237,15 @@ class Application {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
     const errBox = document.getElementById('login-error-msg');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : 'Sign In';
+
+    if (errBox) errBox.style.display = 'none';
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Signing in...';
+    }
 
     try {
       const user = await window.authService.login(email, password);
@@ -242,8 +257,15 @@ class Application {
       else if (user.role === 'lecturer') this.navigate('lecturer-view');
       else this.navigate('student-view');
     } catch (err) {
-      errBox.innerText = err.message;
-      errBox.style.display = 'block';
+      if (errBox) {
+        errBox.innerText = err.message || 'Authentication error.';
+        errBox.style.display = 'block';
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
     }
   }
 
@@ -256,7 +278,7 @@ class Application {
       else if (user.role === 'lecturer') this.navigate('lecturer-view');
       else this.navigate('student-view');
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Quick login failed.');
     }
   }
 

@@ -22,6 +22,18 @@ class DbService {
     return window.firebaseManager && window.firebaseManager.getMode() === 'firebase' && window.firebaseManager.firestore;
   }
 
+  async _withTimeout(promise, ms = 5000, fallbackMessage = 'Firestore operation timed out') {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(fallbackMessage)), ms);
+    });
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   // --- Local Storage Helpers ---
   _getLocal(collection) {
     try {
@@ -573,41 +585,67 @@ class DbService {
         const firestore = window.firebaseManager.firestore;
         const recordRef = firestore.collection(this.collections.attendance).doc(compoundDocId);
         
-        // Transaction to ensure atomic duplicate prevention
-        return await firestore.runTransaction(async (transaction) => {
-          const docSnap = await transaction.get(recordRef);
-          if (docSnap.exists) {
-            throw new Error('Your attendance has already been recorded for this lecture.');
+        // Transaction to ensure atomic duplicate prevention with timeout
+        const liveRecord = await this._withTimeout(
+          firestore.runTransaction(async (transaction) => {
+            const docSnap = await transaction.get(recordRef);
+            if (docSnap.exists) {
+              throw new Error('Your attendance has already been recorded for this lecture.');
+            }
+
+            // Evaluate server time vs late threshold
+            const now = new Date();
+            const currentTimeStr = now.toTimeString().substring(0, 5); // "HH:MM"
+            const isLate = currentTimeStr >= session.lateThreshold;
+            const status = isLate ? 'late' : 'present';
+
+            const newRecord = {
+              id: compoundDocId,
+              lectureSessionId: sessionId,
+              studentUid: student.uid,
+              studentName: student.fullName,
+              matricNumber: student.matricNumber || 'N/A',
+              courseId: course.id,
+              courseCode: course.courseCode,
+              courseTitle: course.courseTitle,
+              checkInTime: now.toLocaleTimeString(),
+              timestamp: now.toISOString(),
+              status: status,
+              isLate: isLate,
+              verificationMethod: verificationMethod
+            };
+
+            transaction.set(recordRef, newRecord);
+            return newRecord;
+          }),
+          5000,
+          'Firestore transaction timed out.'
+        );
+
+        if (liveRecord) {
+          // Sync with local memory
+          const allAttendance = this._getLocal(this.collections.attendance);
+          if (!allAttendance.find(a => a.id === compoundDocId)) {
+            allAttendance.unshift(liveRecord);
+            this._setLocal(this.collections.attendance, allAttendance);
           }
-
-          // Evaluate server time vs late threshold
-          const now = new Date();
-          const currentTimeStr = now.toTimeString().substring(0, 5); // "HH:MM"
-          const isLate = currentTimeStr >= session.lateThreshold;
-          const status = isLate ? 'late' : 'present';
-
-          const newRecord = {
-            id: compoundDocId,
-            lectureSessionId: sessionId,
-            studentUid: student.uid,
-            studentName: student.fullName,
-            matricNumber: student.matricNumber || 'N/A',
-            courseId: course.id,
-            courseCode: course.courseCode,
-            courseTitle: course.courseTitle,
-            checkInTime: now.toLocaleTimeString(),
-            timestamp: now.toISOString(),
-            status: status,
-            isLate: isLate,
-            verificationMethod: verificationMethod
-          };
-
-          transaction.set(recordRef, newRecord);
-          return newRecord;
-        });
+          await this.addAuditLog({
+            eventType: 'ATTENDANCE_RECORDED',
+            actorUid: student.uid,
+            actorName: student.fullName,
+            targetId: compoundDocId,
+            metadata: `Status: ${liveRecord.status.toUpperCase()} (${liveRecord.isLate ? 'Late' : 'On-time'}) for ${course.courseCode}`
+          });
+          return liveRecord;
+        }
       } catch (err) {
-        if (err.message.includes('already been recorded')) throw err;
-        console.warn('Firestore transaction failed, falling back to atomic local engine:', err);
+        if (err.message && err.message.includes('already been recorded')) {
+          throw err;
+        }
+        if (window.firebaseManager && typeof window.firebaseManager.handleApiError === 'function') {
+          window.firebaseManager.handleApiError(err);
+        }
+        console.warn('Firestore transaction failed or timed out, executing local atomic engine:', err);
       }
     }
 

@@ -121,31 +121,24 @@ class FirebaseConfigManager {
           this.firestore = firebase.firestore();
 
           // Prepare Firebase Functions client for configured region (us-central1)
-          // Note: Client initialization is independent of whether functions are already deployed
           const region = this.config.functionsRegion || 'us-central1';
           if (typeof firebase.functions === 'function') {
-            this.functions = firebase.app().functions(region);
-          } else {
-            console.warn('[Firebase Init Notice] Firebase Functions Compat SDK not detected. Callable functions unavailable.');
+            try {
+              this.functions = firebase.app().functions(region);
+            } catch (fnErr) {
+              console.warn('[Firebase Functions Warning]', fnErr);
+            }
           }
 
           this.status = 'connected';
           this.initError = null;
           
           console.log(
-            `%c[Firebase SDK] Initialized successfully for project: "${this.config.projectId}"`,
+            `%c[Firebase SDK] Initialized for project: "${this.config.projectId}"`,
             'color: #10b981; font-weight: bold;'
-          );
-          console.info(
-            `• Firebase Auth: Ready for authentication requests\n` +
-            `• Cloud Firestore: Client instance active\n` +
-            `• Cloud Functions: Client target configured for region "${region}"\n` +
-            `• Operating Mode: LIVE FIREBASE CLOUD (Group 6 Project)\n\n` +
-            `Note: SDK initialization confirms valid app options. Network-level validation (Auth sign-in, Firestore security rules evaluation, and Callable Cloud Functions) will execute upon respective operational requests.`
           );
           return true;
         } catch (err) {
-          // DO NOT silently switch to mock mode when the application is intended to run live
           this.status = 'error';
           this.initError = err;
           console.error('[Firebase Init Failure] Could not initialize Firebase Cloud Engine:', err);
@@ -161,6 +154,19 @@ class FirebaseConfigManager {
     })();
 
     return this._initPromise;
+  }
+
+  handleApiError(err) {
+    if (!err) return;
+    const msg = String(err.message || err.code || err);
+    if (msg.includes('API_KEY_INVALID') || msg.includes('api-key-not-valid') || msg.includes('API key not valid')) {
+      console.warn('[FirebaseManager] Inactive or invalid Firebase API key detected. Switching to Presentation Engine fallback.');
+      this.status = 'error';
+      this.initError = new Error('The Firebase API key is currently inactive or restricted in Google Cloud Console. Active fallback to Presentation Engine enabled.');
+      if (window.app && typeof window.app.updateEngineBadge === 'function') {
+        window.app.updateEngineBadge();
+      }
+    }
   }
 }
 

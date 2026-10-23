@@ -82,21 +82,61 @@ class AttendanceEngine {
       aspectRatio: 1.0
     };
 
+    const qrSuccessHandler = (decodedText, decodedResult) => {
+      this.handleScannedData(decodedText, onSuccessCallback, onErrorCallback);
+    };
+
     try {
+      // 1. Try environment (rear) camera
       await this.html5QrCode.start(
-        { facingMode: "environment" }, // Prefer rear camera on mobile
+        { facingMode: "environment" },
         qrConfig,
-        (decodedText, decodedResult) => {
-          this.handleScannedData(decodedText, onSuccessCallback, onErrorCallback);
-        },
-        (errorMessage) => {
-          // Scanner frame error, normal while scanning empty view
-        }
+        qrSuccessHandler,
+        () => {}
       );
+    } catch (envErr) {
+      console.warn('Rear camera unavailable, attempting front/user camera or default:', envErr);
+      try {
+        // 2. Fallback to user (front/webcam) camera
+        await this.html5QrCode.start(
+          { facingMode: "user" },
+          qrConfig,
+          qrSuccessHandler,
+          () => {}
+        );
+      } catch (userErr) {
+        console.warn('Front camera unavailable, querying available devices:', userErr);
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            await this.html5QrCode.start(
+              cameras[0].id,
+              qrConfig,
+              qrSuccessHandler,
+              () => {}
+            );
+          } else {
+            this.isScanning = false;
+            throw new Error('No camera hardware detected on this device. You can use manual code or image upload.');
+          }
+        } catch (finalErr) {
+          this.isScanning = false;
+          throw finalErr;
+        }
+      }
+    }
+  }
+
+  async scanImageFile(file, onSuccess, onError) {
+    if (!file) return;
+    try {
+      if (!this.html5QrCode) {
+        this.html5QrCode = new Html5Qrcode('scanner-viewfinder');
+      }
+      const decodedText = await this.html5QrCode.scanFile(file, true);
+      await this.handleScannedData(decodedText, onSuccess, onError);
     } catch (err) {
-      this.isScanning = false;
-      console.warn('Camera access denied or unavailable:', err);
-      throw err;
+      if (onError) onError(new Error('Could not detect a valid QR code in the uploaded image. Please ensure the QR code is clear and in focus.'));
     }
   }
 
@@ -171,22 +211,22 @@ class AttendanceEngine {
   // --- Manual Code Fallback ---
   async submitManualCode(code, onSuccess, onError) {
     try {
-      const cleanCode = code.trim().toUpperCase();
+      const cleanCode = (code || '').trim().toUpperCase();
       if (!cleanCode) throw new Error('Please enter the 6-character lecture code.');
 
       const student = window.authService.currentUser;
       if (!student) throw new Error('Please sign in as a student.');
 
-      // Find active session matching manual code
+      // Find active or paused session matching manual code
       const allSessions = await window.dbService.getSessions();
       const targetSession = allSessions.find(s => 
         (s.status === 'active' || s.status === 'paused') && 
         s.manualCode && 
-        s.manualCode.toUpperCase() === cleanCode
+        s.manualCode.trim().toUpperCase() === cleanCode
       );
 
       if (!targetSession) {
-        throw new Error('Invalid or expired lecture code. No active attendance session matches this code.');
+        throw new Error(`Invalid or expired lecture code "${cleanCode}". No active lecture session matches this code.`);
       }
 
       const result = await window.dbService.recordAttendanceSubmission({
@@ -196,8 +236,10 @@ class AttendanceEngine {
       });
 
       if (onSuccess) onSuccess(result);
+      return result;
     } catch (err) {
       if (onError) onError(err);
+      throw err;
     }
   }
 

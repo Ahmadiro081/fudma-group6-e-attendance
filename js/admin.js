@@ -428,6 +428,13 @@ class AdminController {
     const staffId = document.getElementById('lec-staffid').value.trim();
     const email = document.getElementById('lec-email').value.trim();
     const department = document.getElementById('lec-dept').value.trim();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : 'Create Lecturer Account';
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Creating Account...';
+    }
 
     try {
       const existing = await window.dbService.getUserByEmail(email);
@@ -446,7 +453,12 @@ class AdminController {
       window.app.showToast(`Lecturer account for ${fullName} created successfully!`, 'success');
       this.render();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Failed to create lecturer account.');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
     }
   }
 
@@ -495,6 +507,13 @@ class AdminController {
     const email = document.getElementById('st-email').value.trim();
     const level = document.getElementById('st-level').value;
     const department = document.getElementById('st-dept').value.trim();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : 'Register Student';
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Registering Student...';
+    }
 
     try {
       const existing = await window.dbService.getUserByEmail(email);
@@ -521,7 +540,12 @@ class AdminController {
       window.app.showToast(`Student ${fullName} registered and enrolled in GET 411!`, 'success');
       this.render();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Failed to register student.');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
     }
   }
 
