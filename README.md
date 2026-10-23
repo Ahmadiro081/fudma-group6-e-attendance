@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # E-ATTENDANCE SYSTEM WITH QR CODE
 ### Artificial Intelligence Mini Project (GET 411) • Group 6 • Academic Session 2026/2027
 **Federal University Dutsin-Ma (FUDMA), Katsina State, Nigeria**  
@@ -244,3 +245,6 @@ Use this step-by-step checklist to rehearse your project defense:
 - [x] **Finalize Absences:** Click *Finalize & Mark Absences* on a closed session. Verify remaining enrolled students receive **Absent (Red)** badges.
 - [x] **CSV Export:** Download the session CSV and inspect columns (`S/N, Student Name, Matric Number, Check-In Time, Status, Late Arrival Flag`).
 - [x] **Admin Auditing:** Switch to Administrator, inspect audit logs, course assignments, and user account toggles.
+=======
+# fudma-group6-e-attendance
+>>>>>>> b667683e76dbfbefe04d81169e593a4742187ec8
