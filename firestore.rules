@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for role and authentication verification
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+
+    function isLecturer() {
+      return isAuthenticated() && (getUserData().role == 'lecturer' || isAdmin());
+    }
+
+    function isStudent() {
+      return isAuthenticated() && getUserData().role == 'student';
+    }
+
+    // --- Users Collection ---
+    // Users can read profiles; only Admin can create, modify, or deactivate accounts
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- Courses Collection ---
+    // Anyone authenticated can read course list; Admin or assigned Lecturer can manage
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || (isLecturer() && resource.data.lecturerUid == request.auth.uid);
+    }
+
+    // --- Lecture Sessions Collection ---
+    // Authenticated users can view sessions; Lecturers can create and manage their own sessions
+    match /lectureSessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if isLecturer();
+      allow update: if isLecturer() && (resource.data.lecturerUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // --- Attendance Records Collection ---
+    // Strict rules:
+    // 1. Students can ONLY view their OWN attendance records.
+    // 2. Lecturers and Admins can view course attendance records.
+    // 3. Document ID MUST be compound: `${sessionId}_${request.auth.uid}`.
+    // 4. Attendance records are IMMUTABLE once created (no update or delete by students).
+    match /attendanceRecords/{attendanceId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isLecturer() ||
+        isAdmin()
+      );
+
+      // Creation allowed if authenticated student creating their own record with proper compound ID
+      allow create: if isAuthenticated() && (
+        (request.resource.data.studentUid == request.auth.uid &&
+         attendanceId == request.resource.data.lectureSessionId + '_' + request.auth.uid) ||
+        isLecturer() ||
+        isAdmin()
+      );
+
+      // Attendance records are immutable to prevent tampering
+      allow update, delete: if isAdmin();
+    }
+
+    // --- Audit Logs Collection ---
+    // Read-only for Admin; append-only for authenticated system events
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Audit logs can never be altered
+    }
+
+    // --- Settings & Metadata ---
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

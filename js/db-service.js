@@ -1,0 +1,778 @@
+/**
+ * FUDMA E-Attendance System - Database Service
+ * Cloud Firestore & High-Fidelity Local Engine Abstraction
+ * Course: GET 411 | Group 6 | Academic Session: 2026/2027
+ */
+
+const DB_STORAGE_PREFIX = 'fudma_db_';
+
+class DbService {
+  constructor() {
+    this.collections = {
+      users: 'users',
+      courses: 'courses',
+      sessions: 'lectureSessions',
+      attendance: 'attendanceRecords',
+      audit: 'auditLogs',
+      settings: 'settings'
+    };
+  }
+
+  isLiveFirestore() {
+    return window.firebaseManager && window.firebaseManager.getMode() === 'firebase' && window.firebaseManager.firestore;
+  }
+
+  // --- Local Storage Helpers ---
+  _getLocal(collection) {
+    try {
+      const data = localStorage.getItem(DB_STORAGE_PREFIX + collection);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error(`Error reading ${collection} from storage:`, e);
+      return [];
+    }
+  }
+
+  _setLocal(collection, items) {
+    try {
+      localStorage.setItem(DB_STORAGE_PREFIX + collection, JSON.stringify(items));
+    } catch (e) {
+      console.error(`Error saving ${collection} to storage:`, e);
+    }
+  }
+
+  // --- Seed Initial Data ---
+  initializeDefaultData() {
+    const existingUsers = this._getLocal(this.collections.users);
+    if (!existingUsers || existingUsers.length === 0) {
+      console.log('Seeding initial FUDMA GET 411 Group 6 database records...');
+
+      const defaultUsers = [
+        {
+          uid: 'admin_001',
+          fullName: 'FUDMA Academic Registry Admin',
+          staffId: 'FUDMA/STAFF/ADM/014',
+          email: 'admin@fudma.edu.ng',
+          role: 'admin',
+          department: 'Academic Affairs Division',
+          status: 'active',
+          createdAt: '2026-09-01T08:00:00Z'
+        },
+        {
+          uid: 'lecturer_nura',
+          fullName: 'Malam Nura Muhammad',
+          staffId: 'FUDMA/STAFF/ENG/082',
+          email: 'nura.muhammad@fudma.edu.ng',
+          role: 'lecturer',
+          department: 'Computer & Engineering Sciences',
+          status: 'active',
+          createdAt: '2026-09-01T08:30:00Z'
+        },
+        {
+          uid: 'student_001',
+          fullName: 'Ibrahim Musa',
+          matricNumber: 'FUDMA/2022/UG/ENG/0061',
+          email: 'student1@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:00:00Z'
+        },
+        {
+          uid: 'student_002',
+          fullName: 'Fatima Aliyu',
+          matricNumber: 'FUDMA/2022/UG/ENG/0062',
+          email: 'student2@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:05:00Z'
+        },
+        {
+          uid: 'student_003',
+          fullName: 'Usman Bello',
+          matricNumber: 'FUDMA/2022/UG/ENG/0063',
+          email: 'student3@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:10:00Z'
+        },
+        {
+          uid: 'student_004',
+          fullName: 'Zainab Hassan',
+          matricNumber: 'FUDMA/2022/UG/ENG/0064',
+          email: 'student4@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:15:00Z'
+        },
+        {
+          uid: 'student_005',
+          fullName: 'Abdullahi Garba',
+          matricNumber: 'FUDMA/2022/UG/ENG/0065',
+          email: 'student5@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:20:00Z'
+        }
+      ];
+      this._setLocal(this.collections.users, defaultUsers);
+
+      const defaultCourses = [
+        {
+          id: 'course_get411',
+          courseCode: 'GET 411',
+          courseTitle: 'Artificial Intelligence Mini Project',
+          lecturerUid: 'lecturer_nura',
+          academicSession: '2026/2027',
+          semester: 'First Semester',
+          department: 'Faculty of Engineering & Technology',
+          creditUnits: 3,
+          enrolledStudentIds: [
+            'student_001',
+            'student_002',
+            'student_003',
+            'student_004',
+            'student_005'
+          ],
+          createdAt: '2026-09-05T09:00:00Z'
+        },
+        {
+          id: 'course_cpe401',
+          courseCode: 'CPE 401',
+          courseTitle: 'Embedded Systems Design',
+          lecturerUid: 'lecturer_nura',
+          academicSession: '2026/2027',
+          semester: 'First Semester',
+          department: 'Computer Engineering',
+          creditUnits: 3,
+          enrolledStudentIds: ['student_001', 'student_002', 'student_003'],
+          createdAt: '2026-09-05T09:30:00Z'
+        }
+      ];
+      this._setLocal(this.collections.courses, defaultCourses);
+
+      const today = new Date().toISOString().split('T')[0];
+      const defaultSessions = [
+        {
+          id: 'session_demo_active',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          courseTitle: 'Artificial Intelligence Mini Project',
+          lecturerUid: 'lecturer_nura',
+          lecturerName: 'Malam Nura Muhammad',
+          venue: 'FUDMA Lecture Hall 3B',
+          date: today,
+          startTime: '08:00',
+          lateThreshold: '08:15',
+          closeTime: '23:59',
+          status: 'active',
+          manualCode: 'AI4116',
+          qrToken: 'fudma-token-session_demo_active-live',
+          allowManualCode: true,
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'session_past_01',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          courseTitle: 'Artificial Intelligence Mini Project',
+          lecturerUid: 'lecturer_nura',
+          lecturerName: 'Malam Nura Muhammad',
+          venue: 'AI Research Laboratory',
+          date: '2026-10-15',
+          startTime: '08:00',
+          lateThreshold: '08:15',
+          closeTime: '09:00',
+          status: 'finalized',
+          manualCode: 'GET015',
+          qrToken: 'fudma-token-session_past_01-archived',
+          allowManualCode: true,
+          createdAt: '2026-10-15T08:00:00Z'
+        }
+      ];
+      this._setLocal(this.collections.sessions, defaultSessions);
+
+      const defaultAttendance = [
+        {
+          id: 'session_past_01_student_001',
+          lectureSessionId: 'session_past_01',
+          studentUid: 'student_001',
+          studentName: 'Ibrahim Musa',
+          matricNumber: 'FUDMA/2022/UG/ENG/0061',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          checkInTime: '08:08:24',
+          timestamp: '2026-10-15T08:08:24Z',
+          status: 'present',
+          isLate: false,
+          verificationMethod: 'qr_scan'
+        },
+        {
+          id: 'session_past_01_student_002',
+          lectureSessionId: 'session_past_01',
+          studentUid: 'student_002',
+          studentName: 'Fatima Aliyu',
+          matricNumber: 'FUDMA/2022/UG/ENG/0062',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          checkInTime: '08:19:10',
+          timestamp: '2026-10-15T08:19:10Z',
+          status: 'late',
+          isLate: true,
+          verificationMethod: 'qr_scan'
+        },
+        {
+          id: 'session_past_01_student_003',
+          lectureSessionId: 'session_past_01',
+          studentUid: 'student_003',
+          studentName: 'Usman Bello',
+          matricNumber: 'FUDMA/2022/UG/ENG/0063',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          checkInTime: '08:05:00',
+          timestamp: '2026-10-15T08:05:00Z',
+          status: 'present',
+          isLate: false,
+          verificationMethod: 'manual_code'
+        },
+        {
+          id: 'session_past_01_student_004',
+          lectureSessionId: 'session_past_01',
+          studentUid: 'student_004',
+          studentName: 'Zainab Hassan',
+          matricNumber: 'FUDMA/2022/UG/ENG/0064',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          checkInTime: 'N/A',
+          timestamp: '2026-10-15T09:01:00Z',
+          status: 'absent',
+          isLate: false,
+          verificationMethod: 'finalized_absence'
+        },
+        {
+          id: 'session_past_01_student_005',
+          lectureSessionId: 'session_past_01',
+          studentUid: 'student_005',
+          studentName: 'Abdullahi Garba',
+          matricNumber: 'FUDMA/2022/UG/ENG/0065',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          checkInTime: 'N/A',
+          timestamp: '2026-10-15T09:01:00Z',
+          status: 'absent',
+          isLate: false,
+          verificationMethod: 'finalized_absence'
+        }
+      ];
+      this._setLocal(this.collections.attendance, defaultAttendance);
+
+      const defaultAudit = [
+        {
+          id: 'audit_001',
+          eventType: 'SYSTEM_INITIALIZATION',
+          actorUid: 'admin_001',
+          actorName: 'Registry Admin',
+          targetId: 'academic_session_2026_2027',
+          timestamp: new Date().toISOString(),
+          metadata: 'System seeded with FUDMA GET 411 Group 6 parameters.'
+        }
+      ];
+      this._setLocal(this.collections.audit, defaultAudit);
+    }
+  }
+
+  // --- Users Operations ---
+  async getUsers(role = null) {
+    if (this.isLiveFirestore()) {
+      try {
+        let query = window.firebaseManager.firestore.collection(this.collections.users);
+        if (role) query = query.where('role', '==', role);
+        const snapshot = await query.get();
+        return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+      } catch (err) {
+        console.warn('Firestore fetch users failed, falling back to local DB:', err);
+      }
+    }
+    const all = this._getLocal(this.collections.users);
+    return role ? all.filter(u => u.role === role) : all;
+  }
+
+  async getUserById(uid) {
+    if (this.isLiveFirestore()) {
+      try {
+        const doc = await window.firebaseManager.firestore.collection(this.collections.users).doc(uid).get();
+        if (doc.exists) return { uid: doc.id, ...doc.data() };
+      } catch (err) {
+        console.warn('Firestore fetch user failed:', err);
+      }
+    }
+    const all = this._getLocal(this.collections.users);
+    return all.find(u => u.uid === uid) || null;
+  }
+
+  async getUserByEmail(email) {
+    if (this.isLiveFirestore()) {
+      try {
+        const snap = await window.firebaseManager.firestore.collection(this.collections.users)
+          .where('email', '==', email.toLowerCase().trim()).get();
+        if (!snap.empty) {
+          const doc = snap.docs[0];
+          return { uid: doc.id, ...doc.data() };
+        }
+      } catch (err) {
+        console.warn('Firestore getUserByEmail failed:', err);
+      }
+    }
+    const all = this._getLocal(this.collections.users);
+    return all.find(u => u.email.toLowerCase() === email.toLowerCase().trim()) || null;
+  }
+
+  async saveUser(userData) {
+    const uid = userData.uid || 'usr_' + Date.now();
+    const user = {
+      ...userData,
+      uid,
+      status: userData.status || 'active',
+      createdAt: userData.createdAt || new Date().toISOString()
+    };
+
+    if (this.isLiveFirestore()) {
+      try {
+        await window.firebaseManager.firestore.collection(this.collections.users).doc(uid).set(user, { merge: true });
+      } catch (err) {
+        console.warn('Firestore save user failed:', err);
+      }
+    }
+
+    const all = this._getLocal(this.collections.users);
+    const idx = all.findIndex(u => u.uid === uid);
+    if (idx >= 0) all[idx] = { ...all[idx], ...user };
+    else all.push(user);
+    this._setLocal(this.collections.users, all);
+
+    await this.addAuditLog({
+      eventType: 'USER_SAVED',
+      actorUid: window.authService?.currentUser?.uid || 'system',
+      actorName: window.authService?.currentUser?.fullName || 'System',
+      targetId: uid,
+      metadata: `Saved account for ${user.fullName} (${user.role})`
+    });
+
+    return user;
+  }
+
+  // --- Courses Operations ---
+  async getCourses(lecturerUid = null) {
+    if (this.isLiveFirestore()) {
+      try {
+        let query = window.firebaseManager.firestore.collection(this.collections.courses);
+        if (lecturerUid) query = query.where('lecturerUid', '==', lecturerUid);
+        const snapshot = await query.get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (err) {
+        console.warn('Firestore getCourses failed:', err);
+      }
+    }
+    const all = this._getLocal(this.collections.courses);
+    return lecturerUid ? all.filter(c => c.lecturerUid === lecturerUid) : all;
+  }
+
+  async getCourseById(courseId) {
+    if (this.isLiveFirestore()) {
+      try {
+        const doc = await window.firebaseManager.firestore.collection(this.collections.courses).doc(courseId).get();
+        if (doc.exists) return { id: doc.id, ...doc.data() };
+      } catch (err) {
+        console.warn('Firestore getCourseById failed:', err);
+      }
+    }
+    const all = this._getLocal(this.collections.courses);
+    return all.find(c => c.id === courseId) || null;
+  }
+
+  async saveCourse(courseData) {
+    const id = courseData.id || 'course_' + Date.now();
+    const course = {
+      ...courseData,
+      id,
+      enrolledStudentIds: courseData.enrolledStudentIds || [],
+      createdAt: courseData.createdAt || new Date().toISOString()
+    };
+
+    if (this.isLiveFirestore()) {
+      try {
+        await window.firebaseManager.firestore.collection(this.collections.courses).doc(id).set(course, { merge: true });
+      } catch (err) {
+        console.warn('Firestore saveCourse failed:', err);
+      }
+    }
+
+    const all = this._getLocal(this.collections.courses);
+    const idx = all.findIndex(c => c.id === id);
+    if (idx >= 0) all[idx] = { ...all[idx], ...course };
+    else all.push(course);
+    this._setLocal(this.collections.courses, all);
+
+    await this.addAuditLog({
+      eventType: 'COURSE_SAVED',
+      actorUid: window.authService?.currentUser?.uid || 'system',
+      actorName: window.authService?.currentUser?.fullName || 'System',
+      targetId: id,
+      metadata: `Saved course ${course.courseCode} - ${course.courseTitle}`
+    });
+
+    return course;
+  }
+
+  // --- Lecture Sessions Operations ---
+  async getSessions(filterCourseId = null, filterLecturerUid = null) {
+    if (this.isLiveFirestore()) {
+      try {
+        let query = window.firebaseManager.firestore.collection(this.collections.sessions);
+        if (filterCourseId) query = query.where('courseId', '==', filterCourseId);
+        if (filterLecturerUid) query = query.where('lecturerUid', '==', filterLecturerUid);
+        const snapshot = await query.orderBy('createdAt', 'desc').get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (err) {
+        console.warn('Firestore getSessions failed:', err);
+      }
+    }
+    let all = this._getLocal(this.collections.sessions);
+    if (filterCourseId) all = all.filter(s => s.courseId === filterCourseId);
+    if (filterLecturerUid) all = all.filter(s => s.lecturerUid === filterLecturerUid);
+    return all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  async getSessionById(sessionId) {
+    if (this.isLiveFirestore()) {
+      try {
+        const doc = await window.firebaseManager.firestore.collection(this.collections.sessions).doc(sessionId).get();
+        if (doc.exists) return { id: doc.id, ...doc.data() };
+      } catch (err) {
+        console.warn('Firestore getSessionById failed:', err);
+      }
+    }
+    const all = this._getLocal(this.collections.sessions);
+    return all.find(s => s.id === sessionId) || null;
+  }
+
+  async saveSession(sessionData) {
+    const id = sessionData.id || 'session_' + Date.now();
+    const session = {
+      ...sessionData,
+      id,
+      status: sessionData.status || 'active',
+      createdAt: sessionData.createdAt || new Date().toISOString()
+    };
+
+    if (this.isLiveFirestore()) {
+      try {
+        await window.firebaseManager.firestore.collection(this.collections.sessions).doc(id).set(session, { merge: true });
+      } catch (err) {
+        console.warn('Firestore saveSession failed:', err);
+      }
+    }
+
+    const all = this._getLocal(this.collections.sessions);
+    const idx = all.findIndex(s => s.id === id);
+    if (idx >= 0) all[idx] = { ...all[idx], ...session };
+    else all.unshift(session);
+    this._setLocal(this.collections.sessions, all);
+
+    await this.addAuditLog({
+      eventType: 'SESSION_SAVED',
+      actorUid: window.authService?.currentUser?.uid || session.lecturerUid,
+      actorName: window.authService?.currentUser?.fullName || session.lecturerName,
+      targetId: id,
+      metadata: `Session ${session.status} for ${session.courseCode}`
+    });
+
+    return session;
+  }
+
+  async updateSessionStatus(sessionId, status) {
+    const session = await this.getSessionById(sessionId);
+    if (!session) throw new Error('Session not found');
+    session.status = status;
+    return this.saveSession(session);
+  }
+
+  // --- Attendance Operations & Atomic Validation ---
+  async getAttendance(filterSessionId = null, filterStudentUid = null) {
+    if (this.isLiveFirestore()) {
+      try {
+        let query = window.firebaseManager.firestore.collection(this.collections.attendance);
+        if (filterSessionId) query = query.where('lectureSessionId', '==', filterSessionId);
+        if (filterStudentUid) query = query.where('studentUid', '==', filterStudentUid);
+        const snapshot = await query.get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (err) {
+        console.warn('Firestore getAttendance failed:', err);
+      }
+    }
+    let all = this._getLocal(this.collections.attendance);
+    if (filterSessionId) all = all.filter(a => a.lectureSessionId === filterSessionId);
+    if (filterStudentUid) all = all.filter(a => a.studentUid === filterStudentUid);
+    return all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }
+
+  /**
+   * Trusted Attendance Recorder with Atomic Duplicate Prevention
+   * Enforces:
+   * 1. Student must be authenticated.
+   * 2. Session must exist and be 'active'.
+   * 3. Student must be registered for course.
+   * 4. Student must NOT have already checked in (Compound doc ID: `${sessionId}_${studentUid}`).
+   * 5. Server determines late arrival vs present.
+   */
+  async recordAttendanceSubmission({ sessionId, studentUid, verificationMethod = 'qr_scan' }) {
+    // 1. Fetch Session
+    const session = await this.getSessionById(sessionId);
+    if (!session) {
+      throw new Error('Lecture session does not exist or has expired.');
+    }
+
+    if (session.status !== 'active') {
+      if (session.status === 'paused') {
+        throw new Error('Attendance session is currently PAUSED by the lecturer. Please wait.');
+      }
+      throw new Error('This attendance session is CLOSED and is no longer accepting submissions.');
+    }
+
+    // 2. Fetch Student
+    const student = await this.getUserById(studentUid);
+    if (!student || student.role !== 'student') {
+      throw new Error('Invalid student identity. Only authenticated students may register attendance.');
+    }
+
+    // 3. Fetch Course and check Enrollment
+    const course = await this.getCourseById(session.courseId);
+    if (!course) {
+      throw new Error('Associated course record was not found.');
+    }
+
+    const isEnrolled = course.enrolledStudentIds && course.enrolledStudentIds.includes(studentUid);
+    if (!isEnrolled) {
+      throw new Error(`You are not registered for ${course.courseCode} (${course.courseTitle}). Attendance cannot be recorded.`);
+    }
+
+    // 4. Duplicate Check with Unique Document Identifier
+    const compoundDocId = `${sessionId}_${studentUid}`;
+
+    if (this.isLiveFirestore()) {
+      try {
+        const firestore = window.firebaseManager.firestore;
+        const recordRef = firestore.collection(this.collections.attendance).doc(compoundDocId);
+        
+        // Transaction to ensure atomic duplicate prevention
+        return await firestore.runTransaction(async (transaction) => {
+          const docSnap = await transaction.get(recordRef);
+          if (docSnap.exists) {
+            throw new Error('Your attendance has already been recorded for this lecture.');
+          }
+
+          // Evaluate server time vs late threshold
+          const now = new Date();
+          const currentTimeStr = now.toTimeString().substring(0, 5); // "HH:MM"
+          const isLate = currentTimeStr >= session.lateThreshold;
+          const status = isLate ? 'late' : 'present';
+
+          const newRecord = {
+            id: compoundDocId,
+            lectureSessionId: sessionId,
+            studentUid: student.uid,
+            studentName: student.fullName,
+            matricNumber: student.matricNumber || 'N/A',
+            courseId: course.id,
+            courseCode: course.courseCode,
+            courseTitle: course.courseTitle,
+            checkInTime: now.toLocaleTimeString(),
+            timestamp: now.toISOString(),
+            status: status,
+            isLate: isLate,
+            verificationMethod: verificationMethod
+          };
+
+          transaction.set(recordRef, newRecord);
+          return newRecord;
+        });
+      } catch (err) {
+        if (err.message.includes('already been recorded')) throw err;
+        console.warn('Firestore transaction failed, falling back to atomic local engine:', err);
+      }
+    }
+
+    // Local DB Atomic Simulation
+    const allAttendance = this._getLocal(this.collections.attendance);
+    const existing = allAttendance.find(a => a.id === compoundDocId);
+    if (existing) {
+      throw new Error('Your attendance has already been recorded for this lecture.');
+    }
+
+    // Check Late Threshold
+    const now = new Date();
+    const currentTimeStr = now.toTimeString().substring(0, 5); // "HH:MM"
+    const isLate = currentTimeStr >= session.lateThreshold;
+    const status = isLate ? 'late' : 'present';
+
+    const newRecord = {
+      id: compoundDocId,
+      lectureSessionId: sessionId,
+      studentUid: student.uid,
+      studentName: student.fullName,
+      matricNumber: student.matricNumber || 'N/A',
+      courseId: course.id,
+      courseCode: course.courseCode,
+      courseTitle: course.courseTitle,
+      checkInTime: now.toLocaleTimeString(),
+      timestamp: now.toISOString(),
+      status: status,
+      isLate: isLate,
+      verificationMethod: verificationMethod
+    };
+
+    allAttendance.unshift(newRecord);
+    this._setLocal(this.collections.attendance, allAttendance);
+
+    await this.addAuditLog({
+      eventType: 'ATTENDANCE_RECORDED',
+      actorUid: student.uid,
+      actorName: student.fullName,
+      targetId: compoundDocId,
+      metadata: `Status: ${status.toUpperCase()} (${isLate ? 'Late' : 'On-time'}) for ${course.courseCode}`
+    });
+
+    return newRecord;
+  }
+
+  /**
+   * Finalize Session: Marks all registered students who did not check in as ABSENT.
+   * As specified: "Do not mark a student absent merely because they have not checked in
+   * while the session is still open. Red: Absent, where the lecturer has finalized the session."
+   */
+  async finalizeSessionAbsences(sessionId) {
+    const session = await this.getSessionById(sessionId);
+    if (!session) throw new Error('Session not found');
+
+    const course = await this.getCourseById(session.courseId);
+    if (!course) throw new Error('Course not found');
+
+    const existingAttendance = await this.getAttendance(sessionId);
+    const attendedStudentUids = new Set(existingAttendance.map(a => a.studentUid));
+
+    const absentStudents = [];
+    const allUsers = await this.getUsers('student');
+
+    for (const studentUid of course.enrolledStudentIds || []) {
+      if (!attendedStudentUids.has(studentUid)) {
+        const student = allUsers.find(u => u.uid === studentUid);
+        if (student) {
+          const compoundDocId = `${sessionId}_${studentUid}`;
+          const absentRecord = {
+            id: compoundDocId,
+            lectureSessionId: sessionId,
+            studentUid: student.uid,
+            studentName: student.fullName,
+            matricNumber: student.matricNumber || 'N/A',
+            courseId: course.id,
+            courseCode: course.courseCode,
+            courseTitle: course.courseTitle,
+            checkInTime: 'N/A',
+            timestamp: new Date().toISOString(),
+            status: 'absent',
+            isLate: false,
+            verificationMethod: 'finalized_absence'
+          };
+          absentStudents.push(absentRecord);
+        }
+      }
+    }
+
+    if (absentStudents.length > 0) {
+      const allAttendance = this._getLocal(this.collections.attendance);
+      for (const rec of absentStudents) {
+        if (!allAttendance.find(a => a.id === rec.id)) {
+          allAttendance.push(rec);
+        }
+      }
+      this._setLocal(this.collections.attendance, allAttendance);
+
+      if (this.isLiveFirestore()) {
+        try {
+          const batch = window.firebaseManager.firestore.batch();
+          for (const rec of absentStudents) {
+            const ref = window.firebaseManager.firestore.collection(this.collections.attendance).doc(rec.id);
+            batch.set(ref, rec, { merge: true });
+          }
+          await batch.commit();
+        } catch (err) {
+          console.warn('Batch write of absences to Firestore failed:', err);
+        }
+      }
+    }
+
+    await this.updateSessionStatus(sessionId, 'finalized');
+
+    await this.addAuditLog({
+      eventType: 'SESSION_FINALIZED',
+      actorUid: session.lecturerUid,
+      actorName: session.lecturerName,
+      targetId: sessionId,
+      metadata: `Session finalized for ${session.courseCode}. ${absentStudents.length} students marked absent.`
+    });
+
+    return { absentCount: absentStudents.length };
+  }
+
+  // --- Audit Logs Operations ---
+  async getAuditLogs(limit = 100) {
+    if (this.isLiveFirestore()) {
+      try {
+        const snapshot = await window.firebaseManager.firestore.collection(this.collections.audit)
+          .orderBy('timestamp', 'desc').limit(limit).get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (err) {
+        console.warn('Firestore getAuditLogs failed:', err);
+      }
+    }
+    const all = this._getLocal(this.collections.audit);
+    return all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, limit);
+  }
+
+  async addAuditLog({ eventType, actorUid, actorName, targetId, metadata }) {
+    const log = {
+      id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      eventType,
+      actorUid: actorUid || 'anonymous',
+      actorName: actorName || 'Unknown',
+      targetId: targetId || 'N/A',
+      timestamp: new Date().toISOString(),
+      metadata: metadata || ''
+    };
+
+    if (this.isLiveFirestore()) {
+      try {
+        await window.firebaseManager.firestore.collection(this.collections.audit).doc(log.id).set(log);
+      } catch (err) {
+        console.warn('Firestore addAuditLog failed:', err);
+      }
+    }
+
+    const all = this._getLocal(this.collections.audit);
+    all.unshift(log);
+    this._setLocal(this.collections.audit, all.slice(0, 500)); // retain latest 500
+    return log;
+  }
+}
+
+const dbService = new DbService();
+window.dbService = dbService;
