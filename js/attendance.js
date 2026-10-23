@@ -190,6 +190,17 @@ class AttendanceEngine {
         throw new Error('Please sign in as a student before scanning.');
       }
 
+      // Verify active Firebase Auth identity in live mode
+      if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase') {
+        const fbUser = window.firebaseManager.auth ? window.firebaseManager.auth.currentUser : null;
+        if (!fbUser) {
+          throw new Error('You must have an active Firebase Authentication session to record attendance. Please sign in again.');
+        }
+        if (fbUser.uid !== student.uid) {
+          throw new Error('Authentication session mismatch: Current session does not match authenticated Firebase user.');
+        }
+      }
+
       const result = await window.dbService.recordAttendanceSubmission({
         sessionId: targetSessionId,
         studentUid: student.uid,
@@ -216,6 +227,17 @@ class AttendanceEngine {
 
       const student = window.authService.currentUser;
       if (!student) throw new Error('Please sign in as a student.');
+
+      // Verify active Firebase Auth identity in live mode
+      if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase') {
+        const fbUser = window.firebaseManager.auth ? window.firebaseManager.auth.currentUser : null;
+        if (!fbUser) {
+          throw new Error('You must have an active Firebase Authentication session to record attendance. Please sign in again.');
+        }
+        if (fbUser.uid !== student.uid) {
+          throw new Error('Authentication session mismatch: Current session does not match authenticated Firebase user.');
+        }
+      }
 
       // Find active or paused session matching manual code
       const allSessions = await window.dbService.getSessions();

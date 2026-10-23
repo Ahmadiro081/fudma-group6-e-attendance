@@ -60,6 +60,18 @@ class Application {
   navigate(viewId) {
     // Check route guards
     const user = window.authService.currentUser;
+    const isFirebase = window.firebaseManager && window.firebaseManager.getMode() === 'firebase';
+
+    // In Live Firebase mode, verify active Firebase Auth session matches stored profile
+    if (isFirebase && user) {
+      const fbUser = window.firebaseManager.auth ? window.firebaseManager.auth.currentUser : null;
+      if (!fbUser || fbUser.uid !== user.uid) {
+        window.authService.logout();
+        this.showToast('Your cloud authentication session has expired or is invalid. Please sign in again.', 'warning');
+        this.showLoginModal();
+        return;
+      }
+    }
 
     if (viewId === 'admin-view' && (!user || user.role !== 'admin')) {
       this.showToast('Please sign in with administrator credentials.', 'warning');
@@ -170,7 +182,7 @@ class Application {
     this.openModal('Sign In to FUDMA E-Attendance', `
       <div style="margin-bottom: 20px;">
         <p style="font-size: 0.88rem; color: var(--gray-600);">
-          Enter your institutional credentials or use the demonstration quick-switch buttons below:
+          ${isMock ? 'Enter your institutional credentials or use the demonstration quick-switch buttons below:' : 'Enter your official FUDMA institutional credentials to authenticate with Firebase Cloud:'}
         </p>
 
         <!-- Standard Login Form -->
@@ -196,39 +208,47 @@ class Application {
           </div>
         </form>
 
-        <!-- Quick Demo Switcher Section for Presentation -->
-        <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-200);">
-          <div style="font-size: 0.78rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">
-            ⚡ Quick Demo Accounts (For Group 6 Presentation)
+        <!-- Quick Demo Switcher Section (ONLY available in Local Presentation Engine Mode) -->
+        ${isMock ? `
+          <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-200);">
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">
+              ⚡ Quick Demo Accounts (Local Presentation Engine Mode)
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('lecturer')">
+                👨‍🏫 <strong>Malam Nura Muhammad</strong> (Lecturer - GET 411)
+              </button>
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student1')">
+                🎓 <strong>Ibrahim Musa</strong> (Student 1 - FUDMA/2022/UG/ENG/0061)
+              </button>
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student2')">
+                🎓 <strong>Fatima Aliyu</strong> (Student 2 - FUDMA/2022/UG/ENG/0062)
+              </button>
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('admin')">
+                🛡️ <strong>Academic Registry Admin</strong> (System Administrator)
+              </button>
+            </div>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('lecturer')">
-              👨‍🏫 <strong>Malam Nura Muhammad</strong> (Lecturer - GET 411)
-            </button>
-            <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student1')">
-              🎓 <strong>Ibrahim Musa</strong> (Student 1 - FUDMA/2022/UG/ENG/0061)
-            </button>
-            <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student2')">
-              🎓 <strong>Fatima Aliyu</strong> (Student 2 - FUDMA/2022/UG/ENG/0062)
-            </button>
-            <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('admin')">
-              🛡️ <strong>Academic Registry Admin</strong> (System Administrator)
-            </button>
+        ` : `
+          <div style="margin-top: 20px; padding: 12px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-md); font-size: 0.8rem; color: var(--gray-600);">
+            🔒 <strong>Live Firebase Cloud Mode:</strong> Demo quick-switching is disabled to ensure authentication and audit integrity. To evaluate with instant demo accounts without entering credentials, switch to <em>Local Presentation Engine</em> in database settings.
           </div>
-        </div>
+        `}
       </div>
     `);
 
-    // Auto-fill if preferred role provided
-    if (preferredRole === 'lecturer') {
-      document.getElementById('login-email').value = 'nura.muhammad@fudma.edu.ng';
-      document.getElementById('login-password').value = 'lecturer123';
-    } else if (preferredRole === 'student') {
-      document.getElementById('login-email').value = 'student1@fudma.edu.ng';
-      document.getElementById('login-password').value = 'student123';
-    } else if (preferredRole === 'admin') {
-      document.getElementById('login-email').value = 'admin@fudma.edu.ng';
-      document.getElementById('login-password').value = 'admin123';
+    // Auto-fill demo credentials ONLY in mock mode
+    if (isMock) {
+      if (preferredRole === 'lecturer') {
+        document.getElementById('login-email').value = 'nura.muhammad@fudma.edu.ng';
+        document.getElementById('login-password').value = 'lecturer123';
+      } else if (preferredRole === 'student') {
+        document.getElementById('login-email').value = 'student1@fudma.edu.ng';
+        document.getElementById('login-password').value = 'student123';
+      } else if (preferredRole === 'admin') {
+        document.getElementById('login-email').value = 'admin@fudma.edu.ng';
+        document.getElementById('login-password').value = 'admin123';
+      }
     }
   }
 
@@ -270,6 +290,10 @@ class Application {
   }
 
   async quickLogin(role) {
+    if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase') {
+      this.showToast('Demo quick-switch is disabled in Live Firebase Cloud mode. Switch to "Local Presentation Engine" in settings or sign in with official credentials.', 'warning');
+      return;
+    }
     try {
       const user = await window.authService.quickSwitch(role);
       this.closeModal();

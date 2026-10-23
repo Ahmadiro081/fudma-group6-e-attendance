@@ -22,10 +22,14 @@ class DbService {
     return window.firebaseManager && window.firebaseManager.getMode() === 'firebase' && window.firebaseManager.firestore;
   }
 
-  async _withTimeout(promise, ms = 5000, fallbackMessage = 'Firestore operation timed out') {
+  async _withTimeout(promise, ms = 7000, fallbackMessage = 'Firestore operation timed out') {
     let timeoutId;
     const timeoutPromise = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error(fallbackMessage)), ms);
+      timeoutId = setTimeout(() => {
+        const err = new Error(fallbackMessage);
+        err.isTimeout = true;
+        reject(err);
+      }, ms);
     });
     try {
       return await Promise.race([promise, timeoutPromise]);
@@ -361,7 +365,8 @@ class DbService {
       try {
         await window.firebaseManager.firestore.collection(this.collections.users).doc(uid).set(user, { merge: true });
       } catch (err) {
-        console.warn('Firestore save user failed:', err);
+        console.error('[DbService] Firestore save user failed:', err);
+        throw new Error(`Cloud user write failed: ${err.message || 'Permission denied'}`);
       }
     }
 
@@ -371,13 +376,17 @@ class DbService {
     else all.push(user);
     this._setLocal(this.collections.users, all);
 
-    await this.addAuditLog({
-      eventType: 'USER_SAVED',
-      actorUid: window.authService?.currentUser?.uid || 'system',
-      actorName: window.authService?.currentUser?.fullName || 'System',
-      targetId: uid,
-      metadata: `Saved account for ${user.fullName} (${user.role})`
-    });
+    try {
+      await this.addAuditLog({
+        eventType: 'USER_SAVED',
+        actorUid: window.authService?.currentUser?.uid || 'system',
+        actorName: window.authService?.currentUser?.fullName || 'System',
+        targetId: uid,
+        metadata: `Saved account for ${user.fullName} (${user.role})`
+      });
+    } catch (e) {
+      console.warn('Audit log write error:', e);
+    }
 
     return user;
   }
@@ -424,7 +433,8 @@ class DbService {
       try {
         await window.firebaseManager.firestore.collection(this.collections.courses).doc(id).set(course, { merge: true });
       } catch (err) {
-        console.warn('Firestore saveCourse failed:', err);
+        console.error('[DbService] Firestore saveCourse failed:', err);
+        throw new Error(`Cloud course write failed: ${err.message || 'Permission denied'}`);
       }
     }
 
@@ -434,13 +444,17 @@ class DbService {
     else all.push(course);
     this._setLocal(this.collections.courses, all);
 
-    await this.addAuditLog({
-      eventType: 'COURSE_SAVED',
-      actorUid: window.authService?.currentUser?.uid || 'system',
-      actorName: window.authService?.currentUser?.fullName || 'System',
-      targetId: id,
-      metadata: `Saved course ${course.courseCode} - ${course.courseTitle}`
-    });
+    try {
+      await this.addAuditLog({
+        eventType: 'COURSE_SAVED',
+        actorUid: window.authService?.currentUser?.uid || 'system',
+        actorName: window.authService?.currentUser?.fullName || 'System',
+        targetId: id,
+        metadata: `Saved course ${course.courseCode} - ${course.courseTitle}`
+      });
+    } catch (e) {
+      console.warn('Audit log write error:', e);
+    }
 
     return course;
   }
@@ -458,7 +472,7 @@ class DbService {
         console.warn('Firestore getSessions failed:', err);
       }
     }
-    let all = this._getLocal(this.collections.sessions);
+    const all = this._getLocal(this.collections.sessions);
     if (filterCourseId) all = all.filter(s => s.courseId === filterCourseId);
     if (filterLecturerUid) all = all.filter(s => s.lecturerUid === filterLecturerUid);
     return all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -490,7 +504,8 @@ class DbService {
       try {
         await window.firebaseManager.firestore.collection(this.collections.sessions).doc(id).set(session, { merge: true });
       } catch (err) {
-        console.warn('Firestore saveSession failed:', err);
+        console.error('[DbService] Firestore saveSession failed:', err);
+        throw new Error(`Cloud session write failed: ${err.message || 'Permission denied'}`);
       }
     }
 
@@ -500,13 +515,17 @@ class DbService {
     else all.unshift(session);
     this._setLocal(this.collections.sessions, all);
 
-    await this.addAuditLog({
-      eventType: 'SESSION_SAVED',
-      actorUid: window.authService?.currentUser?.uid || session.lecturerUid,
-      actorName: window.authService?.currentUser?.fullName || session.lecturerName,
-      targetId: id,
-      metadata: `Session ${session.status} for ${session.courseCode}`
-    });
+    try {
+      await this.addAuditLog({
+        eventType: 'SESSION_SAVED',
+        actorUid: window.authService?.currentUser?.uid || session.lecturerUid,
+        actorName: window.authService?.currentUser?.fullName || session.lecturerName,
+        targetId: id,
+        metadata: `Session ${session.status} for ${session.courseCode}`
+      });
+    } catch (e) {
+      console.warn('Audit log write error:', e);
+    }
 
     return session;
   }
@@ -540,14 +559,27 @@ class DbService {
   /**
    * Trusted Attendance Recorder with Atomic Duplicate Prevention
    * Enforces:
-   * 1. Student must be authenticated.
+   * 1. In live mode: authenticated Firebase user matches submitted student UID.
    * 2. Session must exist and be 'active'.
-   * 3. Student must be registered for course.
-   * 4. Student must NOT have already checked in (Compound doc ID: `${sessionId}_${studentUid}`).
-   * 5. Server determines late arrival vs present.
+   * 3. Session must not have passed its configured closeTime.
+   * 4. Student must be registered for course.
+   * 5. Student must NOT have already checked in (Compound doc ID: `${sessionId}_${studentUid}`).
+   * 6. Live mode writes strictly to Cloud Firestore; never falls back to localStorage on failure.
+   * 7. Timeouts are treated as uncertain outcomes requiring verification, not fake successes.
    */
   async recordAttendanceSubmission({ sessionId, studentUid, verificationMethod = 'qr_scan' }) {
-    // 1. Fetch Session
+    // 1. In live Firebase mode, verify authenticated user identity matches studentUid
+    if (this.isLiveFirestore()) {
+      const fbUser = window.firebaseManager.auth ? window.firebaseManager.auth.currentUser : null;
+      if (!fbUser) {
+        throw new Error('Authentication required: No active Firebase Authentication session was found. Please sign in again.');
+      }
+      if (fbUser.uid !== studentUid) {
+        throw new Error('Security identity mismatch: Submitted student UID does not match authenticated Firebase user identity.');
+      }
+    }
+
+    // 2. Fetch Session
     const session = await this.getSessionById(sessionId);
     if (!session) {
       throw new Error('Lecture session does not exist or has expired.');
@@ -560,13 +592,29 @@ class DbService {
       throw new Error('This attendance session is CLOSED and is no longer accepting submissions.');
     }
 
-    // 2. Fetch Student
+    // 3. Check Session Closing Time
+    const now = new Date();
+    const currentTimeStr = now.toTimeString().substring(0, 5); // "HH:MM"
+    const currentDateStr = now.toISOString().split('T')[0]; // "YYYY-MM-DD"
+
+    if (session.closeTime) {
+      const isPastDate = session.date && currentDateStr > session.date;
+      const isPastTimeSameDay = (!session.date || currentDateStr === session.date) && currentTimeStr > session.closeTime;
+      if (isPastDate || isPastTimeSameDay) {
+        throw new Error(`The attendance window for this lecture closed at ${session.closeTime}. Submissions are no longer accepted.`);
+      }
+    }
+
+    // 4. Fetch Student Profile
     const student = await this.getUserById(studentUid);
     if (!student || student.role !== 'student') {
       throw new Error('Invalid student identity. Only authenticated students may register attendance.');
     }
+    if (student.status === 'deactivated') {
+      throw new Error('Student account has been deactivated by administrator.');
+    }
 
-    // 3. Fetch Course and check Enrollment
+    // 5. Fetch Course and check Enrollment
     const course = await this.getCourseById(session.courseId);
     if (!course) {
       throw new Error('Associated course record was not found.');
@@ -577,27 +625,29 @@ class DbService {
       throw new Error(`You are not registered for ${course.courseCode} (${course.courseTitle}). Attendance cannot be recorded.`);
     }
 
-    // 4. Duplicate Check with Unique Document Identifier
+    // 6. Compound Document ID for atomic uniqueness
     const compoundDocId = `${sessionId}_${studentUid}`;
 
+    // 7. Calculate late arrival based on late threshold
+    // (Note: Client-direct architecture evaluates this in client JS; see documented architectural limitations)
+    const isLate = session.lateThreshold ? (currentTimeStr >= session.lateThreshold) : false;
+    const status = isLate ? 'late' : 'present';
+
+    // 8. Live Cloud Firestore write with atomic transaction
     if (this.isLiveFirestore()) {
+      const firestore = window.firebaseManager.firestore;
+      const recordRef = firestore.collection(this.collections.attendance).doc(compoundDocId);
+
+      let liveRecord;
       try {
-        const firestore = window.firebaseManager.firestore;
-        const recordRef = firestore.collection(this.collections.attendance).doc(compoundDocId);
-        
-        // Transaction to ensure atomic duplicate prevention with timeout
-        const liveRecord = await this._withTimeout(
+        liveRecord = await this._withTimeout(
           firestore.runTransaction(async (transaction) => {
             const docSnap = await transaction.get(recordRef);
             if (docSnap.exists) {
-              throw new Error('Your attendance has already been recorded for this lecture.');
+              const dupErr = new Error('Your attendance has already been recorded for this lecture.');
+              dupErr.isDuplicate = true;
+              throw dupErr;
             }
-
-            // Evaluate server time vs late threshold
-            const now = new Date();
-            const currentTimeStr = now.toTimeString().substring(0, 5); // "HH:MM"
-            const isLate = currentTimeStr >= session.lateThreshold;
-            const status = isLate ? 'late' : 'present';
 
             const newRecord = {
               id: compoundDocId,
@@ -609,7 +659,7 @@ class DbService {
               courseCode: course.courseCode,
               courseTitle: course.courseTitle,
               checkInTime: now.toLocaleTimeString(),
-              timestamp: now.toISOString(),
+              timestamp: new Date().toISOString(),
               status: status,
               isLate: isLate,
               verificationMethod: verificationMethod
@@ -618,17 +668,30 @@ class DbService {
             transaction.set(recordRef, newRecord);
             return newRecord;
           }),
-          5000,
-          'Firestore transaction timed out.'
+          7000,
+          'ATTENDANCE_TIMEOUT'
         );
+      } catch (txErr) {
+        if (txErr.isDuplicate || (txErr.message && txErr.message.includes('already been recorded'))) {
+          throw new Error('Your attendance has already been recorded for this lecture.');
+        }
+        if (txErr.isTimeout || txErr.message === 'ATTENDANCE_TIMEOUT') {
+          // Treat timeout as uncertain outcome - DO NOT fallback to localStorage and claim success!
+          throw new Error('Attendance request timed out. The server outcome is uncertain. Please check your network connection and verify your attendance roster before retrying.');
+        }
+        console.error('[DbService] Firestore attendance transaction rejected:', txErr);
+        // Explicitly NEVER write failed cloud attendance to localStorage and report success
+        throw new Error(`Official cloud attendance submission failed: ${txErr.message || 'Permission denied or network failure'}`);
+      }
 
-        if (liveRecord) {
-          // Sync with local memory
-          const allAttendance = this._getLocal(this.collections.attendance);
-          if (!allAttendance.find(a => a.id === compoundDocId)) {
-            allAttendance.unshift(liveRecord);
-            this._setLocal(this.collections.attendance, allAttendance);
-          }
+      if (liveRecord) {
+        // Sync with local memory cache only after cloud success confirmed
+        const allAttendance = this._getLocal(this.collections.attendance);
+        if (!allAttendance.find(a => a.id === compoundDocId)) {
+          allAttendance.unshift(liveRecord);
+          this._setLocal(this.collections.attendance, allAttendance);
+        }
+        try {
           await this.addAuditLog({
             eventType: 'ATTENDANCE_RECORDED',
             actorUid: student.uid,
@@ -636,31 +699,19 @@ class DbService {
             targetId: compoundDocId,
             metadata: `Status: ${liveRecord.status.toUpperCase()} (${liveRecord.isLate ? 'Late' : 'On-time'}) for ${course.courseCode}`
           });
-          return liveRecord;
+        } catch (e) {
+          console.warn('[DbService] Audit log write notice:', e);
         }
-      } catch (err) {
-        if (err.message && err.message.includes('already been recorded')) {
-          throw err;
-        }
-        if (window.firebaseManager && typeof window.firebaseManager.handleApiError === 'function') {
-          window.firebaseManager.handleApiError(err);
-        }
-        console.warn('Firestore transaction failed or timed out, executing local atomic engine:', err);
+        return liveRecord;
       }
     }
 
-    // Local DB Atomic Simulation
+    // 9. Local DB Atomic Simulation (Explicit Presentation Demo Mode ONLY)
     const allAttendance = this._getLocal(this.collections.attendance);
     const existing = allAttendance.find(a => a.id === compoundDocId);
     if (existing) {
       throw new Error('Your attendance has already been recorded for this lecture.');
     }
-
-    // Check Late Threshold
-    const now = new Date();
-    const currentTimeStr = now.toTimeString().substring(0, 5); // "HH:MM"
-    const isLate = currentTimeStr >= session.lateThreshold;
-    const status = isLate ? 'late' : 'present';
 
     const newRecord = {
       id: compoundDocId,
@@ -681,13 +732,17 @@ class DbService {
     allAttendance.unshift(newRecord);
     this._setLocal(this.collections.attendance, allAttendance);
 
-    await this.addAuditLog({
-      eventType: 'ATTENDANCE_RECORDED',
-      actorUid: student.uid,
-      actorName: student.fullName,
-      targetId: compoundDocId,
-      metadata: `Status: ${status.toUpperCase()} (${isLate ? 'Late' : 'On-time'}) for ${course.courseCode}`
-    });
+    try {
+      await this.addAuditLog({
+        eventType: 'ATTENDANCE_RECORDED',
+        actorUid: student.uid,
+        actorName: student.fullName,
+        targetId: compoundDocId,
+        metadata: `Status: ${status.toUpperCase()} (${isLate ? 'Late' : 'On-time'}) for ${course.courseCode}`
+      });
+    } catch (e) {
+      console.warn('[DbService] Audit log write notice:', e);
+    }
 
     return newRecord;
   }

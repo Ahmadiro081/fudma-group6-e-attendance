@@ -23,9 +23,16 @@ class LecturerController {
             <div style="font-size: 3rem; margin-bottom: 16px;">👨‍🏫</div>
             <h2>Lecturer Access Required</h2>
             <p>Please authenticate as a course lecturer (e.g., Malam Nura Muhammad) to manage sessions and attendance.</p>
-            <button class="btn btn-primary" style="margin-top: 16px;" onclick="window.authService.quickSwitch('lecturer')">
-              Switch to Lecturer: Malam Nura Muhammad
-            </button>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="window.app.showLoginModal('lecturer')">
+                🔑 Sign In as Lecturer
+              </button>
+              ${window.firebaseManager && window.firebaseManager.getMode() === 'mock' ? `
+                <button class="btn btn-secondary" onclick="window.authService.quickSwitch('lecturer')">
+                  Switch to Lecturer: Malam Nura Muhammad
+                </button>
+              ` : ''}
+            </div>
           </div>
         </div>
       `;

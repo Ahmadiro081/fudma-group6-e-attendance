@@ -19,9 +19,16 @@ class AdminController {
             <div style="font-size: 3rem; margin-bottom: 16px;">🔒</div>
             <h2>Access Restricted</h2>
             <p>You must be authenticated as a FUDMA System Administrator to access this registry console.</p>
-            <button class="btn btn-primary" style="margin-top: 16px;" onclick="window.authService.quickSwitch('admin')">
-              Switch to Administrator Account
-            </button>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="window.app.showLoginModal('admin')">
+                🔑 Sign In as Administrator
+              </button>
+              ${window.firebaseManager && window.firebaseManager.getMode() === 'mock' ? `
+                <button class="btn btn-secondary" onclick="window.authService.quickSwitch('admin')">
+                  Switch to Administrator Account
+                </button>
+              ` : ''}
+            </div>
           </div>
         </div>
       `;

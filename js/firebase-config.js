@@ -160,9 +160,9 @@ class FirebaseConfigManager {
     if (!err) return;
     const msg = String(err.message || err.code || err);
     if (msg.includes('API_KEY_INVALID') || msg.includes('api-key-not-valid') || msg.includes('API key not valid')) {
-      console.warn('[FirebaseManager] Inactive or invalid Firebase API key detected. Switching to Presentation Engine fallback.');
+      console.error('[FirebaseManager] Inactive or invalid Firebase API key detected:', msg);
       this.status = 'error';
-      this.initError = new Error('The Firebase API key is currently inactive or restricted in Google Cloud Console. Active fallback to Presentation Engine enabled.');
+      this.initError = new Error('The Firebase API key is inactive or restricted in Google Cloud Console. Cloud operations are blocked until resolved in Firebase Console.');
       if (window.app && typeof window.app.updateEngineBadge === 'function') {
         window.app.updateEngineBadge();
       }

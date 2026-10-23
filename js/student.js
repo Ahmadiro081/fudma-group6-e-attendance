@@ -26,8 +26,9 @@ class StudentController {
                 🔑 Sign In with Existing Account
               </button>
             </div>
+            ${window.firebaseManager && window.firebaseManager.getMode() === 'mock' ? `
             <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--gray-200);">
-              <small style="color: var(--gray-500); display: block; margin-bottom: 8px;">Or instant demo switch:</small>
+              <small style="color: var(--gray-500); display: block; margin-bottom: 8px;">Or instant demo switch (Presentation Engine):</small>
               <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
                 <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student1')">
                   Student 1 (Ibrahim Musa)
@@ -37,6 +38,7 @@ class StudentController {
                 </button>
               </div>
             </div>
+            ` : ''}
           </div>
         </div>
       `;
