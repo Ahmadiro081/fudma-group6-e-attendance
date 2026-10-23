@@ -1,0 +1,8 @@
+{
+  "name": "FUDMA E-Attendance System with QR Code",
+  "description": "Automated academic attendance recording and late-arrival detection application developed by Group 6 for GET 411 Artificial Intelligence Mini Project at Federal University Dutsin-Ma.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
