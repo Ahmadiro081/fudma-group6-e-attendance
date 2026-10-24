@@ -14,8 +14,8 @@ class Application {
     // 1. Initialize local persistent database
     window.dbService.initializeDefaultData();
 
-    // 2. Initialize Firebase if configured
-    await window.firebaseManager.initialize();
+    // 2. Setup Global Event Listeners immediately so buttons are interactive without awaiting network
+    this.setupEventListeners();
 
     // 3. Setup Auth listener
     window.authService.onAuthStateChanged((user) => {
@@ -23,8 +23,8 @@ class Application {
       this.updateEngineBadge();
     });
 
-    // 4. Setup Global Event Listeners
-    this.setupEventListeners();
+    // 4. Initialize Firebase if configured
+    await window.firebaseManager.initialize();
 
     // 5. Navigate to initial view based on hash or default
     const hash = window.location.hash.replace('#', '');
@@ -61,34 +61,35 @@ class Application {
     // Check route guards
     const user = window.authService.currentUser;
     const isFirebase = window.firebaseManager && window.firebaseManager.getMode() === 'firebase';
+    const isProtected = ['admin-view', 'lecturer-view', 'student-view'].includes(viewId);
 
-    // In Live Firebase mode, verify active Firebase Auth session matches stored profile
-    if (isFirebase && user) {
+    // In Live Firebase mode, verify active Firebase Auth session matches stored profile for protected views
+    if (isFirebase && user && isProtected) {
       const fbUser = window.firebaseManager.auth ? window.firebaseManager.auth.currentUser : null;
       if (!fbUser || fbUser.uid !== user.uid) {
         window.authService.logout();
         this.showToast('Your cloud authentication session has expired or is invalid. Please sign in again.', 'warning');
         this.showLoginModal();
-        return;
+        return null;
       }
     }
 
     if (viewId === 'admin-view' && (!user || user.role !== 'admin')) {
       this.showToast('Please sign in with administrator credentials.', 'warning');
       this.showLoginModal('admin');
-      return;
+      return null;
     }
 
     if (viewId === 'lecturer-view' && (!user || (user.role !== 'lecturer' && user.role !== 'admin'))) {
       this.showToast('Please sign in as a course lecturer.', 'warning');
       this.showLoginModal('lecturer');
-      return;
+      return null;
     }
 
     if (viewId === 'student-view' && (!user || user.role !== 'student')) {
       this.showToast('Please sign in as a student to access the student portal.', 'warning');
       this.showLoginModal('student');
-      return;
+      return null;
     }
 
     // Hide all views
@@ -97,6 +98,7 @@ class Application {
     });
 
     // Show target view
+    let renderPromise = null;
     const target = document.getElementById(viewId);
     if (target) {
       target.classList.add('active');
@@ -104,11 +106,11 @@ class Application {
       window.location.hash = viewId.replace('-view', '');
       window.scrollTo(0, 0);
 
-      // Render view-specific controller
-      if (viewId === 'lecturer-view') window.lecturerCtrl?.render();
-      if (viewId === 'student-view') window.studentCtrl?.render();
-      if (viewId === 'admin-view') window.adminCtrl?.render();
-      if (viewId === 'project-info-view') window.projectInfoCtrl?.render();
+      // Render view-specific controller and capture returned Promise if async
+      if (viewId === 'lecturer-view') renderPromise = window.lecturerCtrl?.render();
+      if (viewId === 'student-view') renderPromise = window.studentCtrl?.render();
+      if (viewId === 'admin-view') renderPromise = window.adminCtrl?.render();
+      if (viewId === 'project-info-view') renderPromise = window.projectInfoCtrl?.render();
     }
 
     // Update active nav links
@@ -119,6 +121,8 @@ class Application {
         item.classList.remove('active');
       }
     });
+
+    return renderPromise;
   }
 
   updateNavbarUser(user) {
@@ -188,12 +192,14 @@ class Application {
         <!-- Standard Login Form -->
         <form id="app-login-form" onsubmit="window.app.handleLoginForm(event)">
           <div class="form-group">
-            <label>Institutional Email</label>
-            <input type="email" id="login-email" class="form-control" placeholder="e.g. nura.muhammad@fudma.edu.ng" required />
+            <label>Institutional Email or Matric Number</label>
+            <input type="text" id="login-email" class="form-control" placeholder="e.g. ENG/2024/35303 or email" required />
+            <span class="form-help">Enter your FUDMA matric number (e.g., <code>ENG/2024/35303</code>) or institutional email.</span>
           </div>
           <div class="form-group">
             <label>Password</label>
-            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required />
+            <input type="password" id="login-password" class="form-control" placeholder="Default: Fudma@2026" required />
+            <span class="form-help">Default student password: <strong>Fudma@2026</strong></span>
           </div>
           <div id="login-error-msg" style="color: var(--danger-solid); font-size: 0.82rem; margin-top: 6px; display: none;"></div>
           
@@ -212,17 +218,32 @@ class Application {
         ${isMock ? `
           <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-200);">
             <div style="font-size: 0.78rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">
-              ⚡ Quick Demo Accounts (Local Presentation Engine Mode)
+              ⚡ Quick Demo Accounts (7 Students & Faculty)
             </div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; padding-right: 4px;">
               <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('lecturer')">
                 👨‍🏫 <strong>Malam Nura Muhammad</strong> (Lecturer - GET 411)
               </button>
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student5')">
+                🎓 <strong>OLOYEDE PROMISE ISSAC</strong> (ENG/2024/35303)
+              </button>
               <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student1')">
-                🎓 <strong>Ibrahim Musa</strong> (Student 1 - FUDMA/2022/UG/ENG/0061)
+                🎓 <strong>Nura HAMZA MASARI</strong> (ENG/2025/37401)
               </button>
               <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student2')">
-                🎓 <strong>Fatima Aliyu</strong> (Student 2 - FUDMA/2022/UG/ENG/0062)
+                🎓 <strong>Abdullahi Nuhu</strong> (ENG/2024/31912)
+              </button>
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student3')">
+                🎓 <strong>Adamu Jibril</strong> (ENG/2024/32388)
+              </button>
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student4')">
+                🎓 <strong>Dahiru Umar Karofi</strong> (ENG/2024/34360)
+              </button>
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student6')">
+                🎓 <strong>TAIYE JOHN OLONITOLA</strong> (ENG/2024/34750)
+              </button>
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student7')">
+                🎓 <strong>BAKIR MUHAMMAD MUSTAPHA</strong> (ENG/2024/35485)
               </button>
               <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('admin')">
                 🛡️ <strong>Academic Registry Admin</strong> (System Administrator)
@@ -243,8 +264,8 @@ class Application {
         document.getElementById('login-email').value = 'nura.muhammad@fudma.edu.ng';
         document.getElementById('login-password').value = 'lecturer123';
       } else if (preferredRole === 'student') {
-        document.getElementById('login-email').value = 'student1@fudma.edu.ng';
-        document.getElementById('login-password').value = 'student123';
+        document.getElementById('login-email').value = 'ENG/2024/35303';
+        document.getElementById('login-password').value = 'Fudma@2026';
       } else if (preferredRole === 'admin') {
         document.getElementById('login-email').value = 'admin@fudma.edu.ng';
         document.getElementById('login-password').value = 'admin123';
@@ -302,7 +323,7 @@ class Application {
       else if (user.role === 'lecturer') this.navigate('lecturer-view');
       else this.navigate('student-view');
     } catch (err) {
-      alert(err.message || 'Quick login failed.');
+      this.showToast(err.message || 'Quick login failed.', 'danger');
     }
   }
 
@@ -463,6 +484,98 @@ class Application {
 const app = new Application();
 window.app = app;
 
+/**
+ * Diagnostic wrapper for window.app.navigate
+ * Logs precise timing for view switching, route guards, DOM manipulation,
+ * and asynchronous controller rendering/data-fetching bottlenecks.
+ */
+function installNavigateDiagnosticWrapper(appInstance) {
+  const originalNavigate = appInstance.navigate.bind(appInstance);
+  window.__navigationDiagnostics = window.__navigationDiagnostics || [];
+
+  appInstance.navigate = function diagnosticNavigate(viewId) {
+    const navStart = performance.now();
+    const fromView = this.currentView || 'none';
+    const isProtected = ['admin-view', 'lecturer-view', 'student-view'].includes(viewId);
+    const engineMode = window.firebaseManager ? window.firebaseManager.getMode() : 'mock';
+
+    console.group(`[Nav Diagnostic] 🧭 Navigation: "${fromView}" ➔ "${viewId}"`);
+    console.log(`[Nav Diagnostic] Triggered at: ${new Date().toLocaleTimeString()} | Engine Mode: ${engineMode.toUpperCase()}`);
+
+    // Execute core navigation (returns controller render promise if async)
+    const renderPromise = originalNavigate(viewId);
+    const postSync = performance.now();
+    const syncDuration = postSync - navStart;
+
+    const metric = {
+      id: window.__navigationDiagnostics.length + 1,
+      timestamp: new Date().toISOString(),
+      fromView,
+      toView: viewId,
+      isProtected,
+      syncDurationMs: Number(syncDuration.toFixed(2)),
+      asyncDurationMs: 0,
+      totalDurationMs: Number(syncDuration.toFixed(2)),
+      isAsync: false,
+      status: this.currentView === viewId ? 'active' : 'blocked_by_guard'
+    };
+
+    if (this.currentView !== viewId) {
+      console.warn(`[Nav Diagnostic] 🛡️ Route guard halted navigation to "${viewId}". Prompting authentication. Sync time: ${syncDuration.toFixed(2)}ms.`);
+      console.groupEnd();
+      window.__navigationDiagnostics.push(metric);
+      return renderPromise;
+    }
+
+    console.log(`[Nav Diagnostic] 🖥️ DOM View Switch complete (active class toggled) in ${syncDuration.toFixed(2)}ms.`);
+
+    if (renderPromise && typeof renderPromise.then === 'function') {
+      metric.isAsync = true;
+      console.log(`[Nav Diagnostic] ⏳ "${viewId}" dispatched async controller rendering. Awaiting data hydration...`);
+      const asyncStart = performance.now();
+
+      renderPromise.then(() => {
+        const asyncEnd = performance.now();
+        const asyncDuration = asyncEnd - asyncStart;
+        const totalDuration = asyncEnd - navStart;
+
+        metric.asyncDurationMs = Number(asyncDuration.toFixed(2));
+        metric.totalDurationMs = Number(totalDuration.toFixed(2));
+        metric.status = 'hydrated_async';
+
+        console.log(`[Nav Diagnostic] ✅ "${viewId}" async hydration complete in ${asyncDuration.toFixed(2)}ms (Total end-to-end: ${totalDuration.toFixed(2)}ms).`);
+        if (asyncDuration > 250) {
+          console.warn(`[Nav Diagnostic] ⚠️ High latency in "${viewId}" controller (${asyncDuration.toFixed(2)}ms). Firestore or network queries may be delaying full view presentation.`);
+        }
+        console.groupEnd();
+      }).catch((err) => {
+        metric.status = 'async_error';
+        metric.error = err.message;
+        console.error(`[Nav Diagnostic] ❌ Controller render error for "${viewId}":`, err);
+        console.groupEnd();
+      });
+    } else {
+      console.log(`[Nav Diagnostic] ⚡ "${viewId}" rendered synchronously. View fully interactive in ${syncDuration.toFixed(2)}ms.`);
+      console.groupEnd();
+    }
+
+    window.__navigationDiagnostics.push(metric);
+    if (window.__navigationDiagnostics.length > 50) {
+      window.__navigationDiagnostics.shift();
+    }
+
+    return renderPromise;
+  };
+
+  appInstance.getNavigationMetrics = function() {
+    console.table(window.__navigationDiagnostics);
+    return window.__navigationDiagnostics;
+  };
+}
+
+installNavigateDiagnosticWrapper(window.app);
+
 document.addEventListener('DOMContentLoaded', () => {
   window.app.init();
 });
+

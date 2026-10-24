@@ -35,14 +35,16 @@ class AdminController {
       return;
     }
 
-    // Load data
-    const users = await window.dbService.getUsers();
+    // Load registry data concurrently to avoid sequential network delays
+    const [users, courses, sessions, attendance, auditLogs] = await Promise.all([
+      window.dbService.getUsers(),
+      window.dbService.getCourses(),
+      window.dbService.getSessions(),
+      window.dbService.getAttendance(),
+      window.dbService.getAuditLogs(50)
+    ]);
     const lecturers = users.filter(u => u.role === 'lecturer');
     const students = users.filter(u => u.role === 'student');
-    const courses = await window.dbService.getCourses();
-    const sessions = await window.dbService.getSessions();
-    const attendance = await window.dbService.getAttendance();
-    const auditLogs = await window.dbService.getAuditLogs(50);
 
     container.innerHTML = `
       <!-- Metric Cards -->
@@ -478,7 +480,7 @@ class AdminController {
         </div>
         <div class="form-group">
           <label>Matriculation Number</label>
-          <input type="text" id="st-matric" class="form-control" placeholder="e.g. FUDMA/2022/UG/ENG/0070" required />
+          <input type="text" id="st-matric" class="form-control" placeholder="e.g. ENG/2024/35303" required />
         </div>
         <div class="form-group">
           <label>Email Address</label>
@@ -547,7 +549,7 @@ class AdminController {
       window.app.showToast(`Student ${fullName} registered and enrolled in GET 411!`, 'success');
       this.render();
     } catch (err) {
-      alert(err.message || 'Failed to register student.');
+      window.app.showToast(err.message || 'Failed to register student.', 'danger');
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;

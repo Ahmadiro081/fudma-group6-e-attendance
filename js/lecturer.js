@@ -39,8 +39,11 @@ class LecturerController {
       return;
     }
 
-    const courses = await window.dbService.getCourses(user.role === 'lecturer' ? user.uid : null);
-    const sessions = await window.dbService.getSessions(null, user.role === 'lecturer' ? user.uid : null);
+    // Fetch courses and sessions concurrently
+    const [courses, sessions] = await Promise.all([
+      window.dbService.getCourses(user.role === 'lecturer' ? user.uid : null),
+      window.dbService.getSessions(null, user.role === 'lecturer' ? user.uid : null)
+    ]);
     
     // Default to the first session if not selected
     if (!this.selectedSessionId && sessions.length > 0) {
@@ -48,8 +51,12 @@ class LecturerController {
     }
 
     const currentSession = sessions.find(s => s.id === this.selectedSessionId) || sessions[0] || null;
-    const currentCourse = currentSession ? await window.dbService.getCourseById(currentSession.courseId) : null;
-    const allAttendance = currentSession ? await window.dbService.getAttendance(currentSession.id) : [];
+    
+    // Fetch course details and attendance roster concurrently
+    const [currentCourse, allAttendance] = await Promise.all([
+      currentSession ? window.dbService.getCourseById(currentSession.courseId) : Promise.resolve(null),
+      currentSession ? window.dbService.getAttendance(currentSession.id) : Promise.resolve([])
+    ]);
 
     // Filter and search attendance
     let filteredRecords = allAttendance;

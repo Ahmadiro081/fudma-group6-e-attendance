@@ -9,21 +9,30 @@ const STORAGE_KEY_TEAM_MEMBERS = 'fudma_group6_team_members_v1';
 class ProjectInfoController {
   constructor() {
     this.defaultTeamSlots = [
-      { id: 1, name: 'Group 6 Member 1', matricNumber: 'FUDMA/2022/UG/ENG/XXXX', role: 'Team Lead / Full-Stack Integration', dept: 'Engineering' },
-      { id: 2, name: 'Group 6 Member 2', matricNumber: 'FUDMA/2022/UG/ENG/XXXX', role: 'Firebase & Database Architecture', dept: 'Engineering' },
-      { id: 3, name: 'Group 6 Member 3', matricNumber: 'FUDMA/2022/UG/ENG/XXXX', role: 'Frontend UI/UX & Responsive Design', dept: 'Engineering' },
-      { id: 4, name: 'Group 6 Member 4', matricNumber: 'FUDMA/2022/UG/ENG/XXXX', role: 'QR Code Engine & Camera Scanner', dept: 'Engineering' },
-      { id: 5, name: 'Group 6 Member 5', matricNumber: 'FUDMA/2022/UG/ENG/XXXX', role: 'Security Rules & Quality Assurance', dept: 'Engineering' }
+      { id: 1, name: 'Nura HAMZA MASARI', matricNumber: 'ENG/2025/37401', role: 'Team Lead / Full-Stack Integration', dept: 'Engineering' },
+      { id: 2, name: 'Abdullahi Nuhu', matricNumber: 'ENG/2024/31912', role: 'System Analysis & Requirements', dept: 'Engineering' },
+      { id: 3, name: 'Adamu Jibril', matricNumber: 'ENG/2024/32388', role: 'Database & Cloud Firestore Architecture', dept: 'Engineering' },
+      { id: 4, name: 'Dahiru Umar Karofi', matricNumber: 'ENG/2024/34360', role: 'Hardware Interface & QR Code Engine', dept: 'Engineering' },
+      { id: 5, name: 'OLOYEDE PROMISE ISSAC', matricNumber: 'ENG/2024/35303', role: 'Frontend UI/UX & Responsive Design', dept: 'Engineering' },
+      { id: 6, name: 'TAIYE JOHN OLONITOLA', matricNumber: 'ENG/2024/34750', role: 'Quality Assurance & Assessment Testing', dept: 'Engineering' },
+      { id: 7, name: 'BAKIR MUHAMMAD MUSTAPHA', matricNumber: 'ENG/2024/35485', role: 'Security Rules & Documentation', dept: 'Engineering' }
     ];
   }
 
   getTeamMembers() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_TEAM_MEMBERS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Refresh if saved data contains placeholders or lacks the 7 members
+        if (Array.isArray(parsed) && parsed.length >= 7 && parsed.some(m => (m.matricNumber || '').includes('35303'))) {
+          return parsed;
+        }
+      }
     } catch (e) {
       console.warn('Error loading team members:', e);
     }
+    this.saveTeamMembers(this.defaultTeamSlots);
     return this.defaultTeamSlots;
   }
 

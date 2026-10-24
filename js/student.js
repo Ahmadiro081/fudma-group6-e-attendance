@@ -30,11 +30,11 @@ class StudentController {
             <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--gray-200);">
               <small style="color: var(--gray-500); display: block; margin-bottom: 8px;">Or instant demo switch (Presentation Engine):</small>
               <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-                <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student1')">
-                  Student 1 (Ibrahim Musa)
+                <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student5')">
+                  OLOYEDE PROMISE ISSAC (ENG/2024/35303)
                 </button>
-                <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student2')">
-                  Student 2 (Fatima Aliyu)
+                <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student1')">
+                  Nura HAMZA MASARI (ENG/2025/37401)
                 </button>
               </div>
             </div>
@@ -45,12 +45,12 @@ class StudentController {
       return;
     }
 
-    // Fetch student's registered courses
-    const allCourses = await window.dbService.getCourses();
+    // Fetch student's registered courses and attendance records concurrently
+    const [allCourses, myAttendance] = await Promise.all([
+      window.dbService.getCourses(),
+      window.dbService.getAttendance(null, user.uid)
+    ]);
     const enrolledCourses = allCourses.filter(c => (c.enrolledStudentIds || []).includes(user.uid));
-
-    // Fetch student's personal attendance records
-    const myAttendance = await window.dbService.getAttendance(null, user.uid);
 
     // Calculate overall stats
     const totalCheckIns = myAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
@@ -319,11 +319,11 @@ class StudentController {
         </div>
         <div class="form-group">
           <label>Matriculation Number</label>
-          <input type="text" id="su-matric" class="form-control" placeholder="e.g. FUDMA/2022/UG/ENG/0070" required />
+          <input type="text" id="su-matric" class="form-control" placeholder="e.g. ENG/2024/35303" required />
         </div>
         <div class="form-group">
           <label>Institutional Email</label>
-          <input type="email" id="su-email" class="form-control" placeholder="e.g. b.haruna@fudma.edu.ng" required />
+          <input type="email" id="su-email" class="form-control" placeholder="e.g. oloyede.promise@fudma.edu.ng" required />
         </div>
         <div class="form-grid">
           <div class="form-group">
@@ -342,8 +342,8 @@ class StudentController {
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="su-password" class="form-control" placeholder="••••••••" value="student123" required />
-          <span class="form-help">Default demo password is pre-filled (student123).</span>
+          <input type="password" id="su-password" class="form-control" placeholder="••••••••" value="Fudma@2026" required />
+          <span class="form-help">Default password is set to <strong>Fudma@2026</strong>.</span>
         </div>
         <div id="su-error-msg" style="color: var(--danger-solid); font-size: 0.85rem; margin-top: 6px; display: none;"></div>
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">

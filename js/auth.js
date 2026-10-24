@@ -59,12 +59,22 @@ class AuthService {
     }
   }
 
-  async login(email, password) {
-    if (!email || !password) {
-      throw new Error('Please enter both email and password.');
+  async login(identifier, password) {
+    if (!identifier || !password) {
+      throw new Error('Please enter your institutional email / matric number and password.');
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanInput = identifier.trim();
+    const isEmail = cleanInput.includes('@');
+    let matchedUser = null;
+
+    if (!isEmail) {
+      matchedUser = await window.dbService.getUserByMatricNumber(cleanInput);
+    } else {
+      matchedUser = await window.dbService.getUserByEmail(cleanInput.toLowerCase());
+    }
+
+    const cleanEmail = isEmail ? cleanInput.toLowerCase() : (matchedUser ? matchedUser.email : `${cleanInput.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}@fudma.edu.ng`);
 
     // 1. If Firebase Live Mode is active
     if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase') {
@@ -84,7 +94,7 @@ class AuthService {
         // Explicitly NEVER fall back to local demo authentication in live mode
         let userFacingMsg = fbErr.message || 'Authentication failed.';
         if (fbErr.code === 'auth/user-not-found' || fbErr.code === 'auth/wrong-password' || fbErr.code === 'auth/invalid-credential') {
-          userFacingMsg = 'Invalid institutional email or password.';
+          userFacingMsg = 'Invalid institutional credentials or password. Default student password is Fudma@2026.';
         } else if (fbErr.code === 'auth/user-disabled') {
           userFacingMsg = 'This account has been deactivated in Firebase Authentication.';
         } else if (fbErr.code === 'auth/too-many-requests') {
@@ -106,6 +116,9 @@ class AuthService {
         profile = await window.dbService.getUserById(fbUser.uid);
         if (!profile) {
           profile = await window.dbService.getUserByEmail(cleanEmail);
+        }
+        if (!profile && !isEmail) {
+          profile = await window.dbService.getUserByMatricNumber(cleanInput);
         }
       } catch (profileErr) {
         await window.firebaseManager.auth.signOut();
@@ -141,26 +154,39 @@ class AuthService {
       return this.currentUser;
     }
 
-    // 2. High-Fidelity Local Authentication (Explicit Demo Mode ONLY)
+    // 2. High-Fidelity Local Authentication (Explicit Demo / Presentation Mode)
     if (window.firebaseManager && window.firebaseManager.getMode() !== 'mock') {
       throw new Error('Unknown operating engine mode. Please verify database configuration in settings.');
     }
 
-    const user = await window.dbService.getUserByEmail(cleanEmail);
+    const user = matchedUser || 
+                 await window.dbService.getUserByEmail(cleanInput.toLowerCase()) || 
+                 await window.dbService.getUserByMatricNumber(cleanInput);
+
     if (!user) {
-      throw new Error('No user account found with that email address in the local database.');
+      throw new Error(`No student or staff account found for "${cleanInput}". Please check your matric number or institutional email.`);
     }
 
     if (user.status === 'deactivated') {
       throw new Error('This account has been deactivated by the administrator.');
     }
 
-    // Standard demo password verification
-    const validPasswords = ['admin123', 'lecturer123', 'student123', 'password', 'fudma2026', '123456'];
-    const isStandardDemoPass = validPasswords.includes(password.toLowerCase());
+    // Standard demo password verification with Fudma@2026 default
+    const cleanPassword = password.trim();
+    const validPasswords = [
+      'fudma@2026', 
+      'fudma2026', 
+      'fudma@2027',
+      'admin123', 
+      'lecturer123', 
+      'student123', 
+      'password', 
+      '123456'
+    ];
+    const isPasswordValid = validPasswords.includes(cleanPassword.toLowerCase()) || cleanPassword === 'Fudma@2026';
     
-    if (!isStandardDemoPass && password !== '123456') {
-      throw new Error('Invalid demo password. For presentation demo accounts use: admin123, lecturer123, or student123.');
+    if (!isPasswordValid) {
+      throw new Error('Invalid password. Default student password is: Fudma@2026');
     }
 
     this.currentUser = user;
@@ -326,12 +352,22 @@ class AuthService {
       user = await window.dbService.getUserById('admin_001');
     } else if (roleOrUid === 'lecturer') {
       user = await window.dbService.getUserById('lecturer_nura');
-    } else if (roleOrUid === 'student1' || roleOrUid === 'student') {
-      user = await window.dbService.getUserById('student_001');
-    } else if (roleOrUid === 'student2') {
-      user = await window.dbService.getUserById('student_002');
+    } else if (roleOrUid === 'student1' || roleOrUid === 'student' || roleOrUid === 'masari') {
+      user = await window.dbService.getUserById('student_001'); // Nura HAMZA MASARI (ENG/2025/37401)
+    } else if (roleOrUid === 'student2' || roleOrUid === 'nuhu') {
+      user = await window.dbService.getUserById('student_002'); // Abdullahi Nuhu (ENG/2024/31912)
+    } else if (roleOrUid === 'student3' || roleOrUid === 'jibril') {
+      user = await window.dbService.getUserById('student_003'); // Adamu Jibril (ENG/2024/32388)
+    } else if (roleOrUid === 'student4' || roleOrUid === 'karofi') {
+      user = await window.dbService.getUserById('student_004'); // Dahiru Umar Karofi (ENG/2024/34360)
+    } else if (roleOrUid === 'student5' || roleOrUid === 'promise' || roleOrUid === 'oloyede') {
+      user = await window.dbService.getUserById('student_005'); // OLOYEDE PROMISE ISSAC (ENG/2024/35303)
+    } else if (roleOrUid === 'student6' || roleOrUid === 'taiye' || roleOrUid === 'olonitola') {
+      user = await window.dbService.getUserById('student_006'); // TAIYE JOHN OLONITOLA (ENG/2024/34750)
+    } else if (roleOrUid === 'student7' || roleOrUid === 'bakir' || roleOrUid === 'mustapha') {
+      user = await window.dbService.getUserById('student_007'); // BAKIR MUHAMMAD MUSTAPHA (ENG/2024/35485)
     } else {
-      user = await window.dbService.getUserById(roleOrUid);
+      user = await window.dbService.getUserById(roleOrUid) || await window.dbService.getUserByMatricNumber(roleOrUid);
     }
 
     if (!user) {

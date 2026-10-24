@@ -86,9 +86,9 @@ class DbService {
         },
         {
           uid: 'student_001',
-          fullName: 'Ibrahim Musa',
-          matricNumber: 'FUDMA/2022/UG/ENG/0061',
-          email: 'student1@fudma.edu.ng',
+          fullName: 'Nura HAMZA MASARI',
+          matricNumber: 'ENG/2025/37401',
+          email: 'nura.masari@fudma.edu.ng',
           role: 'student',
           department: 'Engineering',
           level: '400L',
@@ -97,9 +97,9 @@ class DbService {
         },
         {
           uid: 'student_002',
-          fullName: 'Fatima Aliyu',
-          matricNumber: 'FUDMA/2022/UG/ENG/0062',
-          email: 'student2@fudma.edu.ng',
+          fullName: 'Abdullahi Nuhu',
+          matricNumber: 'ENG/2024/31912',
+          email: 'abdullahi.nuhu@fudma.edu.ng',
           role: 'student',
           department: 'Engineering',
           level: '400L',
@@ -108,9 +108,9 @@ class DbService {
         },
         {
           uid: 'student_003',
-          fullName: 'Usman Bello',
-          matricNumber: 'FUDMA/2022/UG/ENG/0063',
-          email: 'student3@fudma.edu.ng',
+          fullName: 'Adamu Jibril',
+          matricNumber: 'ENG/2024/32388',
+          email: 'adamu.jibril@fudma.edu.ng',
           role: 'student',
           department: 'Engineering',
           level: '400L',
@@ -119,9 +119,9 @@ class DbService {
         },
         {
           uid: 'student_004',
-          fullName: 'Zainab Hassan',
-          matricNumber: 'FUDMA/2022/UG/ENG/0064',
-          email: 'student4@fudma.edu.ng',
+          fullName: 'Dahiru Umar Karofi',
+          matricNumber: 'ENG/2024/34360',
+          email: 'dahiru.karofi@fudma.edu.ng',
           role: 'student',
           department: 'Engineering',
           level: '400L',
@@ -130,14 +130,36 @@ class DbService {
         },
         {
           uid: 'student_005',
-          fullName: 'Abdullahi Garba',
-          matricNumber: 'FUDMA/2022/UG/ENG/0065',
-          email: 'student5@fudma.edu.ng',
+          fullName: 'OLOYEDE PROMISE ISSAC',
+          matricNumber: 'ENG/2024/35303',
+          email: 'oloyede.promise@fudma.edu.ng',
           role: 'student',
           department: 'Engineering',
           level: '400L',
           status: 'active',
           createdAt: '2026-09-02T10:20:00Z'
+        },
+        {
+          uid: 'student_006',
+          fullName: 'TAIYE JOHN OLONITOLA',
+          matricNumber: 'ENG/2024/34750',
+          email: 'taiye.olonitola@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:25:00Z'
+        },
+        {
+          uid: 'student_007',
+          fullName: 'BAKIR MUHAMMAD MUSTAPHA',
+          matricNumber: 'ENG/2024/35485',
+          email: 'bakir.mustapha@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:30:00Z'
         }
       ];
       this._setLocal(this.collections.users, defaultUsers);
@@ -157,7 +179,9 @@ class DbService {
             'student_002',
             'student_003',
             'student_004',
-            'student_005'
+            'student_005',
+            'student_006',
+            'student_007'
           ],
           createdAt: '2026-09-05T09:00:00Z'
         },
@@ -170,7 +194,15 @@ class DbService {
           semester: 'First Semester',
           department: 'Computer Engineering',
           creditUnits: 3,
-          enrolledStudentIds: ['student_001', 'student_002', 'student_003'],
+          enrolledStudentIds: [
+            'student_001',
+            'student_002',
+            'student_003',
+            'student_004',
+            'student_005',
+            'student_006',
+            'student_007'
+          ],
           createdAt: '2026-09-05T09:30:00Z'
         }
       ];
@@ -222,8 +254,8 @@ class DbService {
           id: 'session_past_01_student_001',
           lectureSessionId: 'session_past_01',
           studentUid: 'student_001',
-          studentName: 'Ibrahim Musa',
-          matricNumber: 'FUDMA/2022/UG/ENG/0061',
+          studentName: 'Nura HAMZA MASARI',
+          matricNumber: 'ENG/2025/37401',
           courseId: 'course_get411',
           courseCode: 'GET 411',
           checkInTime: '08:08:24',
@@ -236,8 +268,8 @@ class DbService {
           id: 'session_past_01_student_002',
           lectureSessionId: 'session_past_01',
           studentUid: 'student_002',
-          studentName: 'Fatima Aliyu',
-          matricNumber: 'FUDMA/2022/UG/ENG/0062',
+          studentName: 'Abdullahi Nuhu',
+          matricNumber: 'ENG/2024/31912',
           courseId: 'course_get411',
           courseCode: 'GET 411',
           checkInTime: '08:19:10',
@@ -250,8 +282,8 @@ class DbService {
           id: 'session_past_01_student_003',
           lectureSessionId: 'session_past_01',
           studentUid: 'student_003',
-          studentName: 'Usman Bello',
-          matricNumber: 'FUDMA/2022/UG/ENG/0063',
+          studentName: 'Adamu Jibril',
+          matricNumber: 'ENG/2024/32388',
           courseId: 'course_get411',
           courseCode: 'GET 411',
           checkInTime: '08:05:00',
@@ -264,29 +296,57 @@ class DbService {
           id: 'session_past_01_student_004',
           lectureSessionId: 'session_past_01',
           studentUid: 'student_004',
-          studentName: 'Zainab Hassan',
-          matricNumber: 'FUDMA/2022/UG/ENG/0064',
+          studentName: 'Dahiru Umar Karofi',
+          matricNumber: 'ENG/2024/34360',
           courseId: 'course_get411',
           courseCode: 'GET 411',
-          checkInTime: 'N/A',
-          timestamp: '2026-10-15T09:01:00Z',
-          status: 'absent',
+          checkInTime: '08:12:00',
+          timestamp: '2026-10-15T08:12:00Z',
+          status: 'present',
           isLate: false,
-          verificationMethod: 'finalized_absence'
+          verificationMethod: 'qr_scan'
         },
         {
           id: 'session_past_01_student_005',
           lectureSessionId: 'session_past_01',
           studentUid: 'student_005',
-          studentName: 'Abdullahi Garba',
-          matricNumber: 'FUDMA/2022/UG/ENG/0065',
+          studentName: 'OLOYEDE PROMISE ISSAC',
+          matricNumber: 'ENG/2024/35303',
           courseId: 'course_get411',
           courseCode: 'GET 411',
-          checkInTime: 'N/A',
-          timestamp: '2026-10-15T09:01:00Z',
-          status: 'absent',
+          checkInTime: '08:06:45',
+          timestamp: '2026-10-15T08:06:45Z',
+          status: 'present',
           isLate: false,
-          verificationMethod: 'finalized_absence'
+          verificationMethod: 'qr_scan'
+        },
+        {
+          id: 'session_past_01_student_006',
+          lectureSessionId: 'session_past_01',
+          studentUid: 'student_006',
+          studentName: 'TAIYE JOHN OLONITOLA',
+          matricNumber: 'ENG/2024/34750',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          checkInTime: '08:21:30',
+          timestamp: '2026-10-15T08:21:30Z',
+          status: 'late',
+          isLate: true,
+          verificationMethod: 'qr_scan'
+        },
+        {
+          id: 'session_past_01_student_007',
+          lectureSessionId: 'session_past_01',
+          studentUid: 'student_007',
+          studentName: 'BAKIR MUHAMMAD MUSTAPHA',
+          matricNumber: 'ENG/2024/35485',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          checkInTime: '08:04:12',
+          timestamp: '2026-10-15T08:04:12Z',
+          status: 'present',
+          isLate: false,
+          verificationMethod: 'manual_code'
         }
       ];
       this._setLocal(this.collections.attendance, defaultAttendance);
@@ -303,6 +363,102 @@ class DbService {
         }
       ];
       this._setLocal(this.collections.audit, defaultAudit);
+    }
+
+    // Migration Sync: Ensure any existing browser session with old mock users is updated to the official 7 students
+    const storedUsers = this._getLocal(this.collections.users);
+    if (storedUsers && storedUsers.length > 0 && !storedUsers.some(u => (u.matricNumber || '').toUpperCase().includes('35303'))) {
+      const nonStudents = storedUsers.filter(u => u.role !== 'student');
+      const updatedStudents = [
+        {
+          uid: 'student_001',
+          fullName: 'Nura HAMZA MASARI',
+          matricNumber: 'ENG/2025/37401',
+          email: 'nura.masari@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:00:00Z'
+        },
+        {
+          uid: 'student_002',
+          fullName: 'Abdullahi Nuhu',
+          matricNumber: 'ENG/2024/31912',
+          email: 'abdullahi.nuhu@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:05:00Z'
+        },
+        {
+          uid: 'student_003',
+          fullName: 'Adamu Jibril',
+          matricNumber: 'ENG/2024/32388',
+          email: 'adamu.jibril@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:10:00Z'
+        },
+        {
+          uid: 'student_004',
+          fullName: 'Dahiru Umar Karofi',
+          matricNumber: 'ENG/2024/34360',
+          email: 'dahiru.karofi@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:15:00Z'
+        },
+        {
+          uid: 'student_005',
+          fullName: 'OLOYEDE PROMISE ISSAC',
+          matricNumber: 'ENG/2024/35303',
+          email: 'oloyede.promise@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:20:00Z'
+        },
+        {
+          uid: 'student_006',
+          fullName: 'TAIYE JOHN OLONITOLA',
+          matricNumber: 'ENG/2024/34750',
+          email: 'taiye.olonitola@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:25:00Z'
+        },
+        {
+          uid: 'student_007',
+          fullName: 'BAKIR MUHAMMAD MUSTAPHA',
+          matricNumber: 'ENG/2024/35485',
+          email: 'bakir.mustapha@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:30:00Z'
+        }
+      ];
+      this._setLocal(this.collections.users, [...nonStudents, ...updatedStudents]);
+
+      // Ensure courses enroll all 7 students
+      const storedCourses = this._getLocal(this.collections.courses);
+      if (storedCourses && storedCourses.length > 0) {
+        const studentIds = ['student_001', 'student_002', 'student_003', 'student_004', 'student_005', 'student_006', 'student_007'];
+        storedCourses.forEach(c => {
+          c.enrolledStudentIds = Array.from(new Set([...(c.enrolledStudentIds || []), ...studentIds]));
+        });
+        this._setLocal(this.collections.courses, storedCourses);
+      }
     }
   }
 
@@ -350,6 +506,29 @@ class DbService {
     }
     const all = this._getLocal(this.collections.users);
     return all.find(u => u.email.toLowerCase() === email.toLowerCase().trim()) || null;
+  }
+
+  async getUserByMatricNumber(matric) {
+    if (!matric) return null;
+    const cleanMatric = matric.trim().toUpperCase().replace(/\s+/g, '');
+    if (this.isLiveFirestore()) {
+      try {
+        // Query Firestore by exact matricNumber
+        const snap = await window.firebaseManager.firestore.collection(this.collections.users)
+          .where('matricNumber', '==', matric.trim()).get();
+        if (!snap.empty) {
+          const doc = snap.docs[0];
+          return { uid: doc.id, ...doc.data() };
+        }
+      } catch (err) {
+        console.warn('Firestore getUserByMatricNumber failed:', err);
+      }
+    }
+    const all = this._getLocal(this.collections.users);
+    return all.find(u => {
+      const uMatric = (u.matricNumber || '').trim().toUpperCase().replace(/\s+/g, '');
+      return uMatric === cleanMatric;
+    }) || null;
   }
 
   async saveUser(userData) {
