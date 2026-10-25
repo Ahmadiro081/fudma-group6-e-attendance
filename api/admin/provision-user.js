@@ -80,7 +80,7 @@ export default async function handler(req, res) {
 
     const newUid = authCreated.user.id;
 
-    // 5. Update or insert profile
+    // 5. Update or insert profile matching public.profiles schema
     const profilePayload = {
       id: newUid,
       full_name: fullName.trim(),
@@ -89,8 +89,7 @@ export default async function handler(req, res) {
       department: department?.trim() || 'Faculty of Engineering',
       status: 'active',
       matric_number: role === 'student' ? (matricNumber?.trim().toUpperCase() || null) : null,
-      level: role === 'student' ? (level?.trim() || '400L') : null,
-      staff_id: role === 'lecturer' ? (staffId?.trim().toUpperCase() || null) : null,
+      level: role === 'student' ? (level?.trim() || '400L') : 'Staff',
       updated_at: new Date().toISOString()
     };
 

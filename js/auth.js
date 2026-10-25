@@ -76,18 +76,21 @@ class AuthService {
 
     const cleanEmail = isEmail ? cleanInput.toLowerCase() : (matchedUser ? matchedUser.email : `${cleanInput.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}@fudma.edu.ng`);
 
-    // 1. If Supabase Live Mode is active
-    if (window.dbService && window.dbService.isLiveSupabase()) {
-      let authResult = null;
+    // Determine effective engine mode: default is 'supabase'
+    const engineMode = (window.firebaseManager && window.firebaseManager.getMode()) || 'supabase';
+
+    // 1. PRIMARY PRODUCTION ENGINE: Supabase Cloud Authentication & PostgreSQL
+    if (engineMode === 'supabase') {
       let profile = null;
 
-      // Attempt secure server-side login endpoint first
+      // Primary: Call serverless /api/auth/login
       try {
         const resp = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identifier: cleanInput, password })
         });
+
         if (resp.ok) {
           const body = await resp.json();
           if (body.session && window.supabaseClient) {
@@ -97,31 +100,57 @@ class AuthService {
             });
           }
           profile = body.user;
-        } else if (resp.status === 401 || resp.status === 403 || resp.status === 429) {
-          const errData = await resp.json().catch(() => ({}));
-          throw new Error(errData.error || 'Invalid credentials or account is deactivated.');
         } else {
-          // Non-200, fallback to direct client-side Supabase Auth (e.g., local dev)
-          throw new Error('API_FALLBACK');
+          const errData = await resp.json().catch(() => ({}));
+          const status = resp.status;
+          if (status === 401) {
+            throw new Error('Invalid institutional credentials or password.');
+          } else if (status === 403) {
+            throw new Error(errData.error || 'This account has been deactivated. Contact the Academic Registry.');
+          } else if (status === 404) {
+            throw new Error(errData.error || 'No institutional user profile found for this account.');
+          } else if (status === 429) {
+            throw new Error('Too many authentication attempts. Please wait 60 seconds.');
+          } else {
+            throw new Error(errData.error || 'Server authentication service error. Please verify Vercel environment variables.');
+          }
         }
       } catch (apiErr) {
-        if (apiErr.message !== 'API_FALLBACK') {
+        // If fetch threw a definitive application error from the server (401, 403, 404, 429, 500)
+        if (apiErr.message && !apiErr.message.includes('fetch') && !apiErr.message.includes('NetworkError') && !apiErr.message.includes('Failed to fetch')) {
           throw apiErr;
         }
 
-        // Direct client fallback for dev server environments
-        const resolvedEmail = cleanEmail;
-        const { data, error: sbErr } = await window.supabaseClient.auth.signInWithPassword({
-          email: resolvedEmail,
-          password
-        });
-        if (sbErr) {
-          console.error('[AuthService] Supabase client login error:', sbErr);
-          throw new Error('Invalid institutional credentials or password. Please verify your matriculation number/email and password.');
-        }
-        if (data && data.user) {
-          profile = await window.dbService.getUserById(data.user.id);
-          if (!profile) profile = await window.dbService.getUserByEmail(data.user.email);
+        // Direct client fallback strictly for local dev server without serverless functions
+        if (window.supabaseClient) {
+          const isEmail = cleanInput.includes('@');
+          let resolvedEmail = isEmail ? cleanInput.toLowerCase() : null;
+
+          if (!resolvedEmail) {
+            const user = await window.dbService.getUserByMatricNumber(cleanInput);
+            if (user && user.email) resolvedEmail = user.email;
+          }
+
+          if (!resolvedEmail) {
+            throw new Error('Invalid institutional credentials or password.');
+          }
+
+          const { data, error: sbErr } = await window.supabaseClient.auth.signInWithPassword({
+            email: resolvedEmail,
+            password
+          });
+
+          if (sbErr) {
+            console.error('[AuthService] Supabase client login error:', sbErr);
+            throw new Error('Invalid institutional credentials or password.');
+          }
+
+          if (data && data.user) {
+            profile = await window.dbService.getUserById(data.user.id);
+            if (!profile) profile = await window.dbService.getUserByEmail(data.user.email);
+          }
+        } else {
+          throw new Error('Authentication service is currently unreachable. Please check your network connection or verify Vercel environment variables.');
         }
       }
 
@@ -232,9 +261,9 @@ class AuthService {
       return this.currentUser;
     }
 
-    // 3. High-Fidelity Local Authentication (Explicit Demo / Presentation Mode)
-    if (window.firebaseManager && window.firebaseManager.getMode() !== 'mock' && window.firebaseManager.getMode() !== 'supabase') {
-      throw new Error('Unknown operating engine mode. Please verify database configuration in settings.');
+    // 3. High-Fidelity Local Authentication (Explicit Demo / Presentation Mode ONLY)
+    if (engineMode !== 'mock') {
+      throw new Error(`Authentication for engine mode "${engineMode}" could not be completed.`);
     }
 
     const user = matchedUser || 
@@ -294,22 +323,16 @@ class AuthService {
    * Fast, reliable registration with rollback on Firestore rejection
    */
   async registerStudent({ fullName, matricNumber, email, password, level = '400L', department = 'Faculty of Engineering' }) {
-    if (!fullName || !matricNumber || !email) {
-      throw new Error('Full Name, Matriculation Number, and Email are required.');
+    if (!fullName || !matricNumber || !email || !password) {
+      throw new Error('Full Name, Matriculation Number, Email, and Password are required.');
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanMatric = matricNumber.trim().toUpperCase();
+    const cleanMatric = matricNumber.trim().toUpperCase().replace(/\s+/g, '');
+    const engineMode = (window.firebaseManager && window.firebaseManager.getMode()) || 'supabase';
 
-    // Check existing in local cache/Firestore
-    const existing = await window.dbService.getUserByEmail(cleanEmail);
-    if (existing) {
-      throw new Error('An account with this email address already exists.');
-    }
-
-    const isSupabase = window.dbService && window.dbService.isLiveSupabase();
-    if (isSupabase) {
-      // 1. Primary: Secure server-side registration via /api/auth/register
+    // 1. PRIMARY PRODUCTION ENGINE: Supabase Cloud Registration
+    if (engineMode === 'supabase') {
       try {
         const resp = await fetch('/api/auth/register', {
           method: 'POST',
@@ -331,53 +354,56 @@ class AuthService {
           sessionStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(this.currentUser));
           this._notifyListeners();
           return registeredUser;
-        } else if (resp.status === 400 || resp.status === 409 || resp.status === 429) {
+        } else {
           const errData = await resp.json().catch(() => ({}));
+          // ALWAYS throw server error immediately - NEVER fall back to Firestore!
           throw new Error(errData.error || 'Student registration could not be completed.');
         }
       } catch (apiErr) {
-        if (apiErr.message && !apiErr.message.includes('fetch')) {
+        // If it's a server response error (400, 409, 429, 500)
+        if (apiErr.message && !apiErr.message.includes('fetch') && !apiErr.message.includes('NetworkError') && !apiErr.message.includes('Failed to fetch')) {
           throw apiErr;
         }
-        console.warn('[/api/auth/register unavailable, trying direct Supabase client]:', apiErr);
-      }
 
-      // 2. Direct Supabase client fallback
-      if (window.supabaseClient) {
-        const { data, error: signUpErr } = await window.supabaseClient.auth.signUp({
-          email: cleanEmail,
-          password: password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              matric_number: cleanMatric,
-              department: department || 'Faculty of Engineering',
-              level: level || '400L'
+        // Direct client fallback strictly for local development without serverless functions
+        if (window.supabaseClient) {
+          const { data, error: signUpErr } = await window.supabaseClient.auth.signUp({
+            email: cleanEmail,
+            password: password,
+            options: {
+              data: {
+                full_name: fullName.trim(),
+                matric_number: cleanMatric,
+                department: department || 'Faculty of Engineering',
+                level: level || '400L'
+              }
             }
-          }
-        });
+          });
 
-        if (signUpErr) {
-          console.error('[AuthService] Supabase signUp failed:', signUpErr);
-          throw new Error(signUpErr.message || 'Supabase account creation failed.');
+          if (signUpErr) {
+            console.error('[AuthService] Supabase signUp failed:', signUpErr);
+            throw new Error(signUpErr.message || 'Supabase account creation failed.');
+          }
+
+          const newStudent = {
+            uid: data?.user?.id || 'pending',
+            id: data?.user?.id || 'pending',
+            fullName: fullName.trim(),
+            matricNumber: cleanMatric,
+            email: cleanEmail,
+            role: 'student',
+            department: department || 'Faculty of Engineering',
+            level: level || '400L',
+            status: 'active'
+          };
+
+          this.currentUser = newStudent;
+          sessionStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(this.currentUser));
+          this._notifyListeners();
+          return newStudent;
         }
 
-        const newStudent = {
-          uid: data?.user?.id || 'pending',
-          id: data?.user?.id || 'pending',
-          fullName: fullName.trim(),
-          matricNumber: cleanMatric,
-          email: cleanEmail,
-          role: 'student',
-          department: department || 'Faculty of Engineering',
-          level: level || '400L',
-          status: 'active'
-        };
-
-        this.currentUser = newStudent;
-        sessionStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(this.currentUser));
-        this._notifyListeners();
-        return newStudent;
+        throw new Error(apiErr.message || 'Registration service is currently unreachable.');
       }
     }
 

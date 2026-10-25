@@ -1,16 +1,22 @@
 /**
  * Vercel Serverless Function: /api/auth/register
  * FUDMA Group 6 E-Attendance System
+ * Course: GET 411 Artificial Intelligence Mini Project | Academic Session: 2026/2027
  * 
  * Secure server-side student self-registration using Supabase Admin SDK.
- * Creates an authenticated user in Supabase Auth, adds their institutional
- * profile in public.profiles (role: student), enrolls them in GET 411,
- * and creates an immutable audit log entry.
+ * Creates an authenticated user in Supabase Auth, provisions their institutional
+ * profile in public.profiles (role: student, status: active), enrolls them in GET 411
+ * if the course exists, and records an immutable audit log entry.
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-// In-memory rate limiting (max 5 registration attempts per IP per minute)
+// NOTE ON SERVERLESS RATE LIMITING:
+// The in-memory rateLimitMap below operates on a per-warm-lambda-instance basis.
+// In a serverless deployment such as Vercel, isolated container instances do not share memory.
+// For global distributed rate limiting across all concurrent serverless instances,
+// an external key-value store (e.g., Upstash Redis or Vercel KV) would be required.
+// This in-process map provides immediate local throttling against rapid brute-force attempts per instance.
 const rateLimitMap = new Map();
 
 function checkRateLimit(ip) {
@@ -42,6 +48,7 @@ export default async function handler(req, res) {
 
   const { fullName, matricNumber, email, password, level, department } = req.body || {};
 
+  // 1. Validate inputs
   if (!fullName || typeof fullName !== 'string' || !fullName.trim()) {
     return res.status(400).json({ error: 'Full name is required.' });
   }
@@ -58,17 +65,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
   }
 
+  // Normalize fields
   const cleanFullName = fullName.trim();
   const cleanMatric = matricNumber.trim().toUpperCase().replace(/\s+/g, '');
   const cleanEmail = email.trim().toLowerCase();
   const cleanDept = (department && typeof department === 'string' && department.trim()) ? department.trim() : 'Faculty of Engineering';
   const cleanLevel = (level && typeof level === 'string' && level.trim()) ? level.trim() : '400L';
 
+  // Environment variables
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mkhzvzgluddaqaxilgkz.supabase.co';
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return res.status(500).json({ error: 'Server registration configuration is incomplete. Please ensure SUPABASE_SERVICE_ROLE_KEY is configured in Vercel environment variables.' });
+    return res.status(500).json({
+      error: 'Server registration configuration is incomplete. Please ensure SUPABASE_SERVICE_ROLE_KEY is configured in Vercel environment variables.'
+    });
   }
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
@@ -76,8 +87,8 @@ export default async function handler(req, res) {
   });
 
   try {
-    // 1. Check if an account already exists with this email or matric number
-    const { data: existingProfile, error: searchErr } = await supabaseAdmin
+    // 2. Prevent duplicate email and matriculation number
+    const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id, email, matric_number')
       .or(`email.eq.${cleanEmail},matric_number.eq.${cleanMatric}`)
@@ -90,7 +101,7 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: 'An account with this matriculation number already exists.' });
     }
 
-    // 2. Create the user in Supabase Auth via Admin SDK (auto-confirmed)
+    // 3. Create user in Supabase Auth via Admin SDK (auto-confirmed)
     const { data: authCreated, error: authErr } = await supabaseAdmin.auth.admin.createUser({
       email: cleanEmail,
       password: password,
@@ -103,14 +114,15 @@ export default async function handler(req, res) {
       }
     });
 
-    if (authErr || !authCreated.user) {
+    if (authErr || !authCreated?.user) {
       console.error('[/api/auth/register auth.admin.createUser error]:', authErr);
-      return res.status(400).json({ error: authErr?.message || 'Failed to create user authentication account.' });
+      return res.status(400).json({ error: authErr?.message || 'Failed to create student authentication account.' });
     }
 
     const newUid = authCreated.user.id;
 
-    // 3. Upsert into public.profiles (role is strictly enforced as 'student', status is 'active')
+    // 4. Create profile with role strictly enforced as 'student' and status 'active'
+    // Matches schema: public.profiles(id, full_name, matric_number, email, role, department, level, status, created_at, updated_at)
     const profilePayload = {
       id: newUid,
       full_name: cleanFullName,
@@ -130,37 +142,63 @@ export default async function handler(req, res) {
 
     if (profileErr) {
       console.error('[/api/auth/register profile upsert error]:', profileErr);
-      // Rollback Auth user if profile write fails
-      await supabaseAdmin.auth.admin.deleteUser(newUid);
+      // Clean rollback: avoid leaving orphaned auth users
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(newUid);
+      } catch (rollbackErr) {
+        console.error('[/api/auth/register rollback error]:', rollbackErr);
+      }
       return res.status(500).json({ error: `Registration failed: ${profileErr.message}. Account rolled back.` });
     }
 
-    // 4. Enroll student in the core course (course_get411) if it exists
+    // 5. Safely enroll student in GET 411 ONLY IF the course exists in public.courses
+    // Matches schema: public.course_enrollments(course_id, student_id, enrolled_at)
     try {
-      await supabaseAdmin
-        .from('course_enrollments')
-        .insert({
-          course_id: 'course_get411',
-          student_id: newUid,
-          enrolled_at: new Date().toISOString()
-        });
-    } catch (enrollErr) {
-      console.warn('[/api/auth/register course enrollment notice]:', enrollErr);
+      const { data: get411Course } = await supabaseAdmin
+        .from('courses')
+        .select('id, course_code')
+        .or('id.eq.course_get411,course_code.eq.GET 411')
+        .limit(1)
+        .maybeSingle();
+
+      if (get411Course && get411Course.id) {
+        const { error: enrollErr } = await supabaseAdmin
+          .from('course_enrollments')
+          .insert({
+            course_id: get411Course.id,
+            student_id: newUid,
+            enrolled_at: new Date().toISOString()
+          });
+
+        if (enrollErr) {
+          console.warn('[/api/auth/register course enrollment notice]:', enrollErr.message);
+        }
+      } else {
+        console.info('[/api/auth/register]: GET 411 course not yet seeded in public.courses; skipped auto-enrollment.');
+      }
+    } catch (enrollException) {
+      console.warn('[/api/auth/register course enrollment exception]:', enrollException);
     }
 
-    // 5. Create immutable audit log entry
+    // 6. Record immutable audit log entry using verified schema
+    // Matches schema: public.audit_logs(event_type, actor_id, actor_name, target_id, metadata, created_at)
     try {
-      await supabaseAdmin.from('audit_logs').insert({
+      const { error: auditErr } = await supabaseAdmin.from('audit_logs').insert({
         event_type: 'USER_REGISTERED',
         actor_id: newUid,
         actor_name: cleanFullName,
         target_id: newUid,
         metadata: `Self-registered student account (${cleanMatric}) for GET 411`
       });
-    } catch (auditErr) {
-      console.warn('[/api/auth/register audit log notice]:', auditErr);
+
+      if (auditErr) {
+        console.warn('[/api/auth/register audit log notice]:', auditErr.message);
+      }
+    } catch (auditException) {
+      console.warn('[/api/auth/register audit log exception]:', auditException);
     }
 
+    // 7. Return sanitized response
     return res.status(201).json({
       success: true,
       message: 'Student registration completed successfully.',

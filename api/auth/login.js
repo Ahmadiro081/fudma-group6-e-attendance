@@ -1,6 +1,7 @@
 /**
  * Vercel Serverless Function: /api/auth/login
  * FUDMA Group 6 E-Attendance System
+ * Course: GET 411 Artificial Intelligence Mini Project | Academic Session: 2026/2027
  * 
  * Safely resolves student matriculation number to institutional email server-side
  * and authenticates credentials without exposing SUPABASE_SERVICE_ROLE_KEY to the browser.
@@ -8,7 +9,12 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// In-memory rate limiting (max 10 login attempts per IP per minute)
+// NOTE ON SERVERLESS RATE LIMITING:
+// The in-memory rateLimitMap below operates on a per-warm-lambda-instance basis.
+// In a serverless deployment such as Vercel, isolated container instances do not share memory.
+// For global distributed rate limiting across all concurrent serverless instances,
+// an external key-value store (e.g., Upstash Redis or Vercel KV) would be required.
+// This in-process map provides immediate local throttling against rapid brute-force attempts per instance.
 const rateLimitMap = new Map();
 
 function checkRateLimit(ip) {
@@ -48,18 +54,20 @@ export default async function handler(req, res) {
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mkhzvzgluddaqaxilgkz.supabase.co';
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || serviceRoleKey;
 
-  if (!supabaseUrl || (!serviceRoleKey && !anonKey)) {
-    return res.status(500).json({ error: 'Server authentication configuration is incomplete. Please ensure SUPABASE_SERVICE_ROLE_KEY is set in Vercel environment variables.' });
+  if (!supabaseUrl || !serviceRoleKey) {
+    return res.status(500).json({
+      error: 'Server authentication configuration is incomplete. Please ensure SUPABASE_SERVICE_ROLE_KEY is set in Vercel environment variables.'
+    });
   }
 
-  // 1. Privileged Admin Client (Used exclusively for server-side lookup of matriculation number)
+  // Privileged Admin Client (Used for identifier resolution, auth verification, and trusted profile retrieval)
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
 
   try {
+    // 1. Resolve identifier (institutional email or matriculation number)
     if (cleanInput.includes('@')) {
       resolvedEmail = cleanInput.toLowerCase();
       // Check status of email user before authentication
@@ -76,8 +84,8 @@ export default async function handler(req, res) {
       const cleanMatric = cleanInput.toUpperCase().replace(/\s+/g, '');
       const { data: profile, error: lookupErr } = await supabaseAdmin
         .from('profiles')
-        .select('email, status')
-        .eq('matric_number', cleanMatric)
+        .select('id, email, status, role')
+        .or(`matric_number.eq.${cleanMatric},matric_number.ilike.${cleanInput.trim()}`)
         .maybeSingle();
 
       if (lookupErr || !profile) {
@@ -92,32 +100,34 @@ export default async function handler(req, res) {
       resolvedEmail = profile.email;
     }
 
-    // 2. Unprivileged Client: Authenticates password using Supabase Auth (respects auth rate limits)
-    const supabaseAnon = createClient(supabaseUrl, anonKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
-
-    const { data: authData, error: authErr } = await supabaseAnon.auth.signInWithPassword({
+    // 2. Authenticate credentials with Supabase Auth
+    const { data: authData, error: authErr } = await supabaseAdmin.auth.signInWithPassword({
       email: resolvedEmail,
       password: password
     });
 
-    if (authErr || !authData.session) {
+    if (authErr || !authData?.session) {
       return res.status(401).json({ error: 'Invalid institutional credentials or password.' });
     }
 
-    // 3. Retrieve user profile
+    // 3. Retrieve trusted user profile using the authenticated user's ID
     const { data: userProfile } = await supabaseAdmin
       .from('profiles')
       .select('*')
       .eq('id', authData.user.id)
-      .single();
+      .maybeSingle();
 
-    if (!userProfile || userProfile.status === 'deactivated') {
+    if (!userProfile) {
+      return res.status(404).json({
+        error: 'Authenticated with Supabase Auth, but no institutional user profile was found. Please contact the Academic Registry.'
+      });
+    }
+
+    if (userProfile.status === 'deactivated') {
       return res.status(403).json({ error: 'This account has been deactivated. Contact the Academic Registry.' });
     }
 
-    // Return session tokens securely to browser
+    // 4. Return session tokens and verified profile securely to the browser
     return res.status(200).json({
       session: {
         access_token: authData.session.access_token,
@@ -133,8 +143,7 @@ export default async function handler(req, res) {
         department: userProfile.department,
         status: userProfile.status,
         matricNumber: userProfile.matric_number || null,
-        level: userProfile.level || null,
-        staffId: userProfile.staff_id || null
+        level: userProfile.level || null
       }
     });
   } catch (err) {
