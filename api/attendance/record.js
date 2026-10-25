@@ -173,7 +173,10 @@ export default async function handler(req, res) {
       }
     } else {
       // QR Scan verification
-      if (session.qr_token && qrToken && typeof qrToken === 'string') {
+      if (session.qr_token) {
+        if (!qrToken || typeof qrToken !== 'string' || !qrToken.trim()) {
+          return res.status(400).json({ error: 'Attendance QR token is required for this lecture.' });
+        }
         const cleanToken = qrToken.trim();
         // Check exact match or extracted token from URL
         const expected = session.qr_token.trim();

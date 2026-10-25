@@ -87,9 +87,11 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Course not found in institutional catalog.' });
     }
 
-    // If caller is lecturer, optionally verify they teach this course (or allow if unassigned/admin)
+    // If caller is lecturer, verify they teach this course (admins can create for any course)
     if (callerProfile.role === 'lecturer' && course.lecturer_id && course.lecturer_id !== callerUser.id) {
-      console.warn(`[create-session] Lecturer ${callerProfile.full_name} creating session for course assigned to ${course.lecturer_id}`);
+      return res.status(403).json({
+        error: `Access denied: You are not assigned to course ${course.course_code}. Lecturers can only create sessions for their assigned courses.`
+      });
     }
 
     // Generate secure session ID and unpredictable 64-character hex QR token

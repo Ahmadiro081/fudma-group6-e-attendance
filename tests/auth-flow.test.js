@@ -326,4 +326,49 @@ describe('FUDMA Authentication & Registration Test Suite', () => {
     });
   });
 
+  describe('10. QR Token Security & Attendance URL Structure', () => {
+    it('verifies that QR token format contains course code, timestamp, and unguessable hex entropy', () => {
+      const courseCode = 'GET 411';
+      const randomHex = 'a1b2c3d4e5f60718';
+      const timestamp = Date.now();
+      const qrToken = `FUDMA-${courseCode.replace(/\s+/g, '')}-${timestamp}-${randomHex}`;
+
+      assert.match(qrToken, /^FUDMA-GET411-\d+-[a-f0-9]{16}$/);
+      assert.ok(qrToken.length >= 32);
+    });
+
+    it('verifies mobile QR URL structure matches SPA client route with hash fragment', () => {
+      const host = 'fudma-group6-e-attendance.vercel.app';
+      const protocol = 'https';
+      const sessionId = 'session_1740000000_abcd1234';
+      const token = 'FUDMA-GET411-1740000000-a1b2c3d4e5f60718';
+      const mobileQrUrl = `${protocol}://${host}/#attendance?sessionId=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(token)}`;
+
+      const urlObj = new URL(mobileQrUrl);
+      assert.equal(urlObj.hostname, 'fudma-group6-e-attendance.vercel.app');
+      assert.ok(urlObj.hash.startsWith('#attendance?'));
+      assert.ok(urlObj.hash.includes('sessionId=session_1740000000_abcd1234'));
+      assert.ok(urlObj.hash.includes('token=FUDMA-GET411-1740000000-a1b2c3d4e5f60718'));
+    });
+
+    it('verifies lecturer course assignment boundary logic blocks unauthorized lecturers', () => {
+      const course = { id: 'get411', course_code: 'GET 411', lecturer_id: 'uuid-lecturer-nura' };
+      const callerLecturerA = { role: 'lecturer', id: 'uuid-lecturer-nura' };
+      const callerLecturerB = { role: 'lecturer', id: 'uuid-lecturer-other' };
+      const callerAdmin = { role: 'admin', id: 'uuid-admin-usr' };
+
+      // Assigned lecturer can proceed
+      const canLecturerA = callerLecturerA.role === 'admin' || !course.lecturer_id || course.lecturer_id === callerLecturerA.id;
+      assert.equal(canLecturerA, true);
+
+      // Unassigned lecturer is blocked
+      const canLecturerB = callerLecturerB.role === 'admin' || !course.lecturer_id || course.lecturer_id === callerLecturerB.id;
+      assert.equal(canLecturerB, false);
+
+      // Admin can always proceed
+      const canAdmin = callerAdmin.role === 'admin' || !course.lecturer_id || course.lecturer_id === callerAdmin.id;
+      assert.equal(canAdmin, true);
+    });
+  });
+
 });

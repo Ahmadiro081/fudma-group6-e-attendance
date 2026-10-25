@@ -91,12 +91,11 @@ function getJwtPayload(token) {
 
     if (cleanInput.toUpperCase() === 'LECTURE@2026') {
       isOnboardingAlias = true;
-      // Onboarding alias specifically maps to lead lecturer Malam Nura Muhammad
+      // Onboarding alias specifically and exclusively maps to lead lecturer Malam Nura Muhammad
       const { data: leadLecturer } = await supabaseAdmin
         .from('profiles')
         .select('id, email, status, role')
-        .or('email.eq.nura.muhammad@fudma.edu.ng,staff_id.eq.FUDMA/STAFF/ENG/082,role.eq.lecturer')
-        .limit(1)
+        .or('email.eq.nura.muhammad@fudma.edu.ng,staff_id.eq.FUDMA/STAFF/ENG/082')
         .maybeSingle();
 
       if (leadLecturer) {
