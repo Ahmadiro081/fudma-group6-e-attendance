@@ -76,7 +76,85 @@ class AuthService {
 
     const cleanEmail = isEmail ? cleanInput.toLowerCase() : (matchedUser ? matchedUser.email : `${cleanInput.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}@fudma.edu.ng`);
 
-    // 1. If Firebase Live Mode is active
+    // 1. If Supabase Live Mode is active
+    if (window.dbService && window.dbService.isLiveSupabase()) {
+      let authResult = null;
+      let profile = null;
+
+      // Attempt secure server-side login endpoint first
+      try {
+        const resp = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: cleanInput, password })
+        });
+        if (resp.ok) {
+          const body = await resp.json();
+          if (body.session && window.supabaseClient) {
+            await window.supabaseClient.auth.setSession({
+              access_token: body.session.access_token,
+              refresh_token: body.session.refresh_token
+            });
+          }
+          profile = body.user;
+        } else if (resp.status === 401 || resp.status === 403 || resp.status === 429) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || 'Invalid credentials or account is deactivated.');
+        } else {
+          // Non-200, fallback to direct client-side Supabase Auth (e.g., local dev)
+          throw new Error('API_FALLBACK');
+        }
+      } catch (apiErr) {
+        if (apiErr.message !== 'API_FALLBACK') {
+          throw apiErr;
+        }
+
+        // Direct client fallback for dev server environments
+        const resolvedEmail = cleanEmail;
+        const { data, error: sbErr } = await window.supabaseClient.auth.signInWithPassword({
+          email: resolvedEmail,
+          password
+        });
+        if (sbErr) {
+          console.error('[AuthService] Supabase client login error:', sbErr);
+          throw new Error('Invalid institutional credentials or password. Default student password is Fudma@2026.');
+        }
+        if (data && data.user) {
+          profile = await window.dbService.getUserById(data.user.id);
+          if (!profile) profile = await window.dbService.getUserByEmail(data.user.email);
+        }
+      }
+
+      if (!profile) {
+        if (window.supabaseClient) await window.supabaseClient.auth.signOut();
+        throw new Error('Authenticated with Supabase, but no institutional user profile was found.');
+      }
+
+      if (profile.status === 'deactivated') {
+        if (window.supabaseClient) await window.supabaseClient.auth.signOut();
+        throw new Error('This account has been deactivated by the administrator. Contact academic registry.');
+      }
+
+      this.currentUser = profile;
+      sessionStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(this.currentUser));
+      this._notifyListeners();
+
+      try {
+        await window.dbService.addAuditLog({
+          eventType: 'USER_LOGIN',
+          actorUid: profile.uid,
+          actorName: profile.fullName,
+          targetId: profile.role,
+          metadata: `Signed in via Supabase Auth (${profile.email})`
+        });
+      } catch (auditErr) {
+        console.warn('[AuthService] Audit log write notice:', auditErr);
+      }
+
+      return this.currentUser;
+    }
+
+    // 2. If Firebase Live Mode is active
     if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase') {
       if (!window.firebaseManager.auth) {
         throw new Error('Firebase Authentication is not initialized. Please verify your connection or switch to Local Presentation Engine in settings.');
@@ -226,6 +304,46 @@ class AuthService {
       throw new Error('An account with this email address already exists.');
     }
 
+    const isSupabase = window.dbService && window.dbService.isLiveSupabase();
+    if (isSupabase) {
+      if (!window.supabaseClient) {
+        throw new Error('Supabase client service is unavailable.');
+      }
+
+      const existingMatric = await window.dbService.getUserByMatricNumber(cleanMatric);
+      if (existingMatric) {
+        throw new Error('An account with this matriculation number already exists.');
+      }
+
+      const { data, error: signUpErr } = await window.supabaseClient.auth.signUp({
+        email: cleanEmail,
+        password: password || 'Fudma@2026',
+        options: {
+          data: {
+            full_name: fullName.trim(),
+            matric_number: cleanMatric,
+            department: department || 'Engineering',
+            level: level || '400L'
+          }
+        }
+      });
+
+      if (signUpErr) {
+        console.error('[AuthService] Supabase signUp failed:', signUpErr);
+        throw new Error(signUpErr.message || 'Supabase account creation failed.');
+      }
+
+      return {
+        uid: data?.user?.id || 'pending',
+        fullName: fullName.trim(),
+        matricNumber: cleanMatric,
+        email: cleanEmail,
+        role: 'student',
+        status: 'deactivated',
+        notice: 'Registration submitted. In accordance with university policy, student accounts require administrator activation before sign-in.'
+      };
+    }
+
     const isFirebase = window.firebaseManager && window.firebaseManager.getMode() === 'firebase';
 
     if (isFirebase) {
@@ -343,6 +461,9 @@ class AuthService {
    * Restricted to Local Presentation Engine Mode
    */
   async quickSwitch(roleOrUid) {
+    if (window.dbService && window.dbService.isLiveSupabase()) {
+      throw new Error('Quick-switch demo accounts are disabled in Live Supabase Cloud mode. Please switch to "Local Presentation Engine" mode in settings to use quick-switch demo accounts.');
+    }
     if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase') {
       throw new Error('Quick-switch demo accounts are disabled in Live Firebase Cloud mode. Please switch to "Local Presentation Engine" mode in settings to use quick-switch demo accounts.');
     }
@@ -394,6 +515,14 @@ class AuthService {
         });
       } catch (e) {
         console.warn('Audit log write error on logout:', e);
+      }
+    }
+
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.auth.signOut();
+      } catch (e) {
+        console.warn('Supabase signout warning:', e);
       }
     }
 

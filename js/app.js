@@ -23,10 +23,23 @@ class Application {
       this.updateEngineBadge();
     });
 
-    // 4. Initialize Firebase if configured
-    await window.firebaseManager.initialize();
+    // 4. Await Supabase readiness if present
+    if (window.supabaseReady) {
+      try {
+        await window.supabaseReady;
+      } catch (sbErr) {
+        console.warn('Supabase initialization notice:', sbErr);
+      }
+    }
 
-    // 5. Navigate to initial view based on hash or default
+    // 5. Initialize Firebase if configured
+    if (window.firebaseManager) {
+      await window.firebaseManager.initialize();
+    }
+
+    this.updateEngineBadge();
+
+    // 6. Navigate to initial view based on hash or default
     const hash = window.location.hash.replace('#', '');
     if (hash && document.getElementById(`${hash}-view`)) {
       this.navigate(`${hash}-view`);
@@ -158,8 +171,15 @@ class Application {
     const badge = document.getElementById('engine-mode-badge');
     if (!badge) return;
 
+    if (window.dbService && window.dbService.isLiveSupabase()) {
+      badge.className = 'engine-indicator firebase';
+      badge.innerHTML = `<span class="pulse-dot green"></span> Live Supabase Cloud`;
+      badge.title = 'Connected to official Supabase PostgreSQL Cloud database.';
+      return;
+    }
+
     const mgr = window.firebaseManager;
-    if (mgr.mode === 'firebase') {
+    if (mgr && mgr.mode === 'firebase') {
       if (mgr.status === 'connected') {
         badge.className = 'engine-indicator firebase';
         badge.innerHTML = `<span class="pulse-dot green"></span> Live Firebase Cloud`;
@@ -176,17 +196,18 @@ class Application {
     } else {
       badge.className = 'engine-indicator mock';
       badge.innerHTML = `<span class="pulse-dot amber"></span> Presentation Engine (Local)`;
-      badge.title = 'Running in high-fidelity local database engine. Click to connect real Firebase.';
+      badge.title = 'Running in high-fidelity local database engine. Click to connect real Supabase or Firebase.';
     }
   }
 
   showLoginModal(preferredRole = null) {
-    const isMock = window.firebaseManager.getMode() === 'mock';
+    const isSupabase = window.dbService && window.dbService.isLiveSupabase();
+    const isMock = !isSupabase && (window.firebaseManager ? window.firebaseManager.getMode() === 'mock' : true);
 
     this.openModal('Sign In to FUDMA E-Attendance', `
       <div style="margin-bottom: 20px;">
         <p style="font-size: 0.88rem; color: var(--gray-600);">
-          ${isMock ? 'Enter your institutional credentials or use the demonstration quick-switch buttons below:' : 'Enter your official FUDMA institutional credentials to authenticate with Firebase Cloud:'}
+          ${isMock ? 'Enter your institutional credentials or use the demonstration quick-switch buttons below:' : (isSupabase ? 'Enter your official FUDMA institutional credentials to authenticate with Supabase Cloud:' : 'Enter your official FUDMA institutional credentials to authenticate with Firebase Cloud:')}
         </p>
 
         <!-- Standard Login Form -->

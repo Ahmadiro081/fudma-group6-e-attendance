@@ -22,6 +22,13 @@ class DbService {
     return window.firebaseManager && window.firebaseManager.getMode() === 'firebase' && window.firebaseManager.firestore;
   }
 
+  isLiveSupabase() {
+    const mode = localStorage.getItem('fudma_engine_mode_v1') || 
+      (window.supabaseBridge && window.supabaseBridge.isReady() ? 'supabase' : 'mock');
+    return mode === 'supabase' && window.supabaseBridge && window.supabaseBridge.isReady();
+  }
+
+
   async _withTimeout(promise, ms = 7000, fallbackMessage = 'Firestore operation timed out') {
     let timeoutId;
     const timeoutPromise = new Promise((_, reject) => {
@@ -464,6 +471,13 @@ class DbService {
 
   // --- Users Operations ---
   async getUsers(role = null) {
+    if (this.isLiveSupabase()) {
+      try {
+        return await window.supabaseBridge.getUsers(role);
+      } catch (err) {
+        console.warn('Supabase fetch users failed, falling back to local DB:', err);
+      }
+    }
     if (this.isLiveFirestore()) {
       try {
         let query = window.firebaseManager.firestore.collection(this.collections.users);
@@ -479,6 +493,14 @@ class DbService {
   }
 
   async getUserById(uid) {
+    if (this.isLiveSupabase()) {
+      try {
+        const user = await window.supabaseBridge.getUserById(uid);
+        if (user) return user;
+      } catch (err) {
+        console.warn('Supabase fetch user failed:', err);
+      }
+    }
     if (this.isLiveFirestore()) {
       try {
         const doc = await window.firebaseManager.firestore.collection(this.collections.users).doc(uid).get();
@@ -492,6 +514,14 @@ class DbService {
   }
 
   async getUserByEmail(email) {
+    if (this.isLiveSupabase()) {
+      try {
+        const user = await window.supabaseBridge.getUserByEmail(email);
+        if (user) return user;
+      } catch (err) {
+        console.warn('Supabase getUserByEmail failed:', err);
+      }
+    }
     if (this.isLiveFirestore()) {
       try {
         const snap = await window.firebaseManager.firestore.collection(this.collections.users)
@@ -510,6 +540,14 @@ class DbService {
 
   async getUserByMatricNumber(matric) {
     if (!matric) return null;
+    if (this.isLiveSupabase()) {
+      try {
+        const user = await window.supabaseBridge.getUserByMatricNumber(matric);
+        if (user) return user;
+      } catch (err) {
+        console.warn('Supabase getUserByMatricNumber failed:', err);
+      }
+    }
     const cleanMatric = matric.trim().toUpperCase().replace(/\s+/g, '');
     if (this.isLiveFirestore()) {
       try {
@@ -532,6 +570,9 @@ class DbService {
   }
 
   async saveUser(userData) {
+    if (this.isLiveSupabase()) {
+      return await window.supabaseBridge.saveUser(userData);
+    }
     const uid = userData.uid || 'usr_' + Date.now();
     const user = {
       ...userData,
@@ -539,6 +580,7 @@ class DbService {
       status: userData.status || 'active',
       createdAt: userData.createdAt || new Date().toISOString()
     };
+
 
     if (this.isLiveFirestore()) {
       try {
@@ -572,6 +614,13 @@ class DbService {
 
   // --- Courses Operations ---
   async getCourses(lecturerUid = null) {
+    if (this.isLiveSupabase()) {
+      try {
+        return await window.supabaseBridge.getCourses(lecturerUid);
+      } catch (err) {
+        console.warn('Supabase fetch courses failed, falling back:', err);
+      }
+    }
     if (this.isLiveFirestore()) {
       try {
         let query = window.firebaseManager.firestore.collection(this.collections.courses);
@@ -587,6 +636,14 @@ class DbService {
   }
 
   async getCourseById(courseId) {
+    if (this.isLiveSupabase()) {
+      try {
+        const c = await window.supabaseBridge.getCourseById(courseId);
+        if (c) return c;
+      } catch (err) {
+        console.warn('Supabase getCourseById failed:', err);
+      }
+    }
     if (this.isLiveFirestore()) {
       try {
         const doc = await window.firebaseManager.firestore.collection(this.collections.courses).doc(courseId).get();
@@ -600,6 +657,9 @@ class DbService {
   }
 
   async saveCourse(courseData) {
+    if (this.isLiveSupabase()) {
+      return await window.supabaseBridge.saveCourse(courseData);
+    }
     const id = courseData.id || 'course_' + Date.now();
     const course = {
       ...courseData,
@@ -640,6 +700,13 @@ class DbService {
 
   // --- Lecture Sessions Operations ---
   async getSessions(filterCourseId = null, filterLecturerUid = null) {
+    if (this.isLiveSupabase()) {
+      try {
+        return await window.supabaseBridge.getSessions(filterCourseId, filterLecturerUid);
+      } catch (err) {
+        console.warn('Supabase getSessions failed, falling back:', err);
+      }
+    }
     if (this.isLiveFirestore()) {
       try {
         let query = window.firebaseManager.firestore.collection(this.collections.sessions);
@@ -658,6 +725,14 @@ class DbService {
   }
 
   async getSessionById(sessionId) {
+    if (this.isLiveSupabase()) {
+      try {
+        const s = await window.supabaseBridge.getSessionById(sessionId);
+        if (s) return s;
+      } catch (err) {
+        console.warn('Supabase getSessionById failed:', err);
+      }
+    }
     if (this.isLiveFirestore()) {
       try {
         const doc = await window.firebaseManager.firestore.collection(this.collections.sessions).doc(sessionId).get();
@@ -671,6 +746,9 @@ class DbService {
   }
 
   async saveSession(sessionData) {
+    if (this.isLiveSupabase()) {
+      return await window.supabaseBridge.saveSession(sessionData);
+    }
     const id = sessionData.id || 'session_' + Date.now();
     const session = {
       ...sessionData,
@@ -710,6 +788,9 @@ class DbService {
   }
 
   async updateSessionStatus(sessionId, status) {
+    if (this.isLiveSupabase()) {
+      return await window.supabaseBridge.updateSessionStatus(sessionId, status);
+    }
     const session = await this.getSessionById(sessionId);
     if (!session) throw new Error('Session not found');
     session.status = status;
@@ -718,6 +799,13 @@ class DbService {
 
   // --- Attendance Operations & Atomic Validation ---
   async getAttendance(filterSessionId = null, filterStudentUid = null) {
+    if (this.isLiveSupabase()) {
+      try {
+        return await window.supabaseBridge.getAttendance(filterSessionId, filterStudentUid);
+      } catch (err) {
+        console.warn('Supabase getAttendance failed:', err);
+      }
+    }
     if (this.isLiveFirestore()) {
       try {
         let query = window.firebaseManager.firestore.collection(this.collections.attendance);
@@ -735,6 +823,7 @@ class DbService {
     return all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   }
 
+
   /**
    * Trusted Attendance Recorder with Atomic Duplicate Prevention
    * Enforces:
@@ -746,7 +835,16 @@ class DbService {
    * 6. Live mode writes strictly to Cloud Firestore; never falls back to localStorage on failure.
    * 7. Timeouts are treated as uncertain outcomes requiring verification, not fake successes.
    */
-  async recordAttendanceSubmission({ sessionId, studentUid, verificationMethod = 'qr_scan' }) {
+  async recordAttendanceSubmission({ sessionId, studentUid, verificationMethod = 'qr_scan', manualCode = null, qrToken = null }) {
+    if (this.isLiveSupabase()) {
+      return await window.supabaseBridge.recordAttendanceSubmission({
+        sessionId,
+        verificationMethod,
+        manualCode,
+        qrToken
+      });
+    }
+
     // 1. In live Firebase mode, verify authenticated user identity matches studentUid
     if (this.isLiveFirestore()) {
       const fbUser = window.firebaseManager.auth ? window.firebaseManager.auth.currentUser : null;
@@ -932,6 +1030,10 @@ class DbService {
    * while the session is still open. Red: Absent, where the lecturer has finalized the session."
    */
   async finalizeSessionAbsences(sessionId) {
+    if (this.isLiveSupabase()) {
+      return await window.supabaseBridge.finalizeSession(sessionId);
+    }
+
     const session = await this.getSessionById(sessionId);
     if (!session) throw new Error('Session not found');
 
@@ -1007,6 +1109,13 @@ class DbService {
 
   // --- Audit Logs Operations ---
   async getAuditLogs(limit = 100) {
+    if (this.isLiveSupabase()) {
+      try {
+        return await window.supabaseBridge.getAuditLogs(limit);
+      } catch (err) {
+        console.warn('Supabase getAuditLogs failed:', err);
+      }
+    }
     if (this.isLiveFirestore()) {
       try {
         const snapshot = await window.firebaseManager.firestore.collection(this.collections.audit)
@@ -1030,6 +1139,14 @@ class DbService {
       timestamp: new Date().toISOString(),
       metadata: metadata || ''
     };
+
+    if (this.isLiveSupabase()) {
+      try {
+        await window.supabaseBridge.addAuditLog(log);
+      } catch (err) {
+        console.warn('Supabase addAuditLog warning:', err);
+      }
+    }
 
     if (this.isLiveFirestore()) {
       try {

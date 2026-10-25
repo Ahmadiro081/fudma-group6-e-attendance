@@ -3,53 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>FUDMA E-Attendance System with QR Code</title>
-
+  
   <!-- SEO & Academic Metadata -->
-  <meta
-    name="description"
-    content="Automated academic attendance recording and late-arrival detection application developed by Group 6 for GET 411 Artificial Intelligence Mini Project at Federal University Dutsin-Ma."
-  />
+  <meta name="description" content="Automated academic attendance recording and late-arrival detection application developed by Group 6 for GET 411 Artificial Intelligence Mini Project at Federal University Dutsin-Ma." />
   <meta property="og:title" content="FUDMA E-Attendance System with QR Code" />
-  <meta
-    property="og:description"
-    content="Automated academic attendance recording and late-arrival detection application developed by Group 6 for GET 411 Artificial Intelligence Mini Project at Federal University Dutsin-Ma."
-  />
+  <meta property="og:description" content="Automated academic attendance recording and late-arrival detection application developed by Group 6 for GET 411 Artificial Intelligence Mini Project at Federal University Dutsin-Ma." />
   <meta name="author" content="Group 6, GET 411, FUDMA" />
   <meta name="theme-color" content="#0b3d91" />
 
-  <!-- Google Fonts -->
+  <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Main Stylesheet -->
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="./css/style.css" />
 </head>
-
 <body>
 
-  <!-- =====================================================
-       TOP ACADEMIC IDENTITY RIBBON
-  ====================================================== -->
+  <!-- Top Academic Identity Ribbon -->
   <header class="fudma-institutional-header">
     <div class="header-identity-left">
       <span class="fudma-crest-badge">FUDMA</span>
-
-      <span class="institution-title">
-        FEDERAL UNIVERSITY DUTSIN-MA
-      </span>
-
+      <span class="institution-title">FEDERAL UNIVERSITY DUTSIN-MA</span>
       <span class="course-meta-tag">
-        • GET 411: Artificial Intelligence Mini Project
+        • GET 411: Artificial Intelligence Mini Project 
         <span class="badge-group6">GROUP 6</span>
       </span>
     </div>
-
     <div class="header-session-info">
       <span>Lecturer: <strong>Nura Muhammad</strong></span>
       <span>•</span>
@@ -57,35 +39,21 @@
     </div>
   </header>
 
-
-  <!-- =====================================================
-       MAIN NAVIGATION
-  ====================================================== -->
+  <!-- Main Navigation Bar -->
   <nav class="main-navbar">
     <div class="navbar-container">
-
       <div class="brand-wrapper" data-nav="landing-view">
         <div class="brand-icon">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>
             <rect x="14" y="14" width="7" height="7"></rect>
             <rect x="3" y="14" width="7" height="7"></rect>
           </svg>
         </div>
-
         <div class="brand-text">
           <h1>E-ATTENDANCE SYSTEM</h1>
-          <div class="brand-subtext">
-            WITH QR CODE • GROUP 6
-          </div>
+          <div class="brand-subtext">WITH QR CODE • GROUP 6</div>
         </div>
       </div>
 
@@ -93,335 +61,195 @@
         <button class="nav-item active" data-nav="landing-view">
           🏠 Home
         </button>
-
         <button class="nav-item" data-nav="student-view">
           🎓 Student Portal
         </button>
-
         <button class="nav-item" data-nav="lecturer-view">
           👨‍🏫 Lecturer Console
         </button>
-
         <button class="nav-item" data-nav="admin-view">
           🛡️ Admin Registry
         </button>
-
         <button class="nav-item" data-nav="project-info-view">
           👥 Group 6 Info
         </button>
       </div>
 
       <div class="user-controls">
-
-        <!-- Engine Status Badge -->
-        <div
-          id="engine-mode-badge"
-          class="engine-indicator mock"
-          onclick="window.app.openFirebaseConfigModal()"
-          title="Click to view or configure the application engine"
-        >
-          <span class="pulse-dot amber"></span>
-          Presentation Engine
+        <!-- Engine Status Badge (Interactive) -->
+        <div id="engine-mode-badge" class="engine-indicator mock" onclick="window.app.openFirebaseConfigModal()" title="Click to view or configure Firebase credentials">
+          <span class="pulse-dot amber"></span> Presentation Engine
         </div>
 
-        <!-- Dynamic User Badge -->
+        <!-- Dynamic User Badge & Login Button -->
         <div id="navbar-user-controls">
-          <button
-            class="btn btn-primary btn-sm"
-            onclick="window.app.showLoginModal()"
-          >
+          <button class="btn btn-primary btn-sm" onclick="window.app.showLoginModal()">
             Sign In
           </button>
         </div>
-
       </div>
     </div>
   </nav>
 
-
-  <!-- =====================================================
-       QUICK DEMONSTRATION ROLE SWITCHER
-  ====================================================== -->
+  <!-- Quick Demo Switcher Bar (For physical assessment & examiner presentation) -->
   <div class="app-container" style="padding-bottom: 0;">
     <div class="demo-bar">
-
       <div class="demo-title">
         <span>⚡ Quick Role Switcher for Assessment:</span>
       </div>
-
       <div class="demo-pills">
-
-        <button
-          class="btn btn-secondary btn-sm"
-          onclick="window.authService.quickSwitch('lecturer')"
-        >
+        <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('lecturer')">
           👨‍🏫 Lecturer (Nura Muhammad)
         </button>
-
-        <button
-          class="btn btn-secondary btn-sm"
-          onclick="window.authService.quickSwitch('student5')"
-          title="OLOYEDE PROMISE ISSAC (ENG/2024/35303)"
-        >
+        <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student5')" title="OLOYEDE PROMISE ISSAC (ENG/2024/35303)">
           🎓 Student (Oloyede Promise)
         </button>
-
-        <button
-          class="btn btn-secondary btn-sm"
-          onclick="window.authService.quickSwitch('student1')"
-          title="Nura HAMZA MASARI (ENG/2025/37401)"
-        >
+        <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student1')" title="Nura HAMZA MASARI (ENG/2025/37401)">
           🎓 Student (Nura Hamza)
         </button>
-
-        <button
-          class="btn btn-secondary btn-sm"
-          onclick="window.authService.quickSwitch('student2')"
-          title="Abdullahi Nuhu (ENG/2024/31912)"
-        >
+        <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student2')" title="Abdullahi Nuhu (ENG/2024/31912)">
           🎓 Student (Abdullahi Nuhu)
         </button>
-
-        <button
-          class="btn btn-secondary btn-sm"
-          onclick="window.authService.quickSwitch('admin')"
-        >
+        <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('admin')">
           🛡️ Administrator
         </button>
-
-        <button
-          class="btn btn-secondary btn-sm"
-          onclick="window.app.navigate('project-info-view')"
-        >
+        <button class="btn btn-secondary btn-sm" onclick="window.app.navigate('project-info-view')">
           👥 Group 6 Team (7 Students)
         </button>
-
       </div>
     </div>
   </div>
 
-
-  <!-- =====================================================
-       MAIN APPLICATION VIEWS
-  ====================================================== -->
+  <!-- Main Views Container -->
   <main class="app-container">
 
     <!-- 1. LANDING VIEW -->
     <section id="landing-view" class="app-view active">
-
       <div class="hero-section">
-
         <div class="hero-banner-ribbon">
-          <span>🏛️ FEDERAL UNIVERSITY DUTSIN-MA (FUDMA)</span>
-          •
-          <span>GROUP 6 PROJECT</span>
+          <span>🏛️ FEDERAL UNIVERSITY DUTSIN-MA (FUDMA)</span> • <span>GROUP 6 PROJECT</span>
         </div>
-
         <h1 class="hero-title">
           E-Attendance System with QR Code
         </h1>
-
         <p class="hero-subtitle">
-          An automated, real-time academic attendance recording and
-          late-arrival detection application built for
-          <strong>GET 411: Artificial Intelligence Mini Project</strong>
-          under the supervision of
-          <strong>Malam Nura Muhammad</strong>
-          for the <strong>2026/2027</strong> Academic Session.
+          An automated, real-time academic attendance recording and late-arrival detection application built for <strong>GET 411: Artificial Intelligence Mini Project</strong> under the supervision of <strong>Malam Nura Muhammad</strong> for the <strong>2026/2027</strong> Academic Session.
         </p>
 
         <div class="hero-action-row">
-
-          <button
-            class="btn btn-primary btn-lg"
-            onclick="window.app.navigate('lecturer-view')"
-          >
+          <button class="btn btn-primary btn-lg" onclick="window.app.navigate('lecturer-view')">
             👨‍🏫 Lecturer Attendance Console
           </button>
-
-          <button
-            class="btn btn-accent btn-lg"
-            onclick="window.app.navigate('student-view')"
-          >
+          <button class="btn btn-accent btn-lg" onclick="window.app.navigate('student-view')">
             📷 Student QR Scanner Portal
           </button>
-
-          <button
-            class="btn btn-secondary btn-lg"
-            onclick="window.app.navigate('project-info-view')"
-          >
+          <button class="btn btn-secondary btn-lg" onclick="window.app.navigate('project-info-view')">
             📖 Project Architecture & Team Roster
           </button>
-
         </div>
 
         <div class="academic-meta-card">
-
           <div>
             <div class="meta-item-label">Institution</div>
-            <div class="meta-item-val">
-              Federal University Dutsin-Ma
-            </div>
+            <div class="meta-item-val">Federal University Dutsin-Ma</div>
           </div>
-
           <div>
             <div class="meta-item-label">Course Code & Category</div>
-            <div class="meta-item-val">
-              GET 411 • AI Mini Project
-            </div>
+            <div class="meta-item-val">GET 411 • AI Mini Project</div>
           </div>
-
           <div>
             <div class="meta-item-label">Assigned Group</div>
-            <div class="meta-item-val">
-              <span class="badge-group6">GROUP 6</span>
-            </div>
+            <div class="meta-item-val"><span class="badge-group6">GROUP 6</span></div>
           </div>
-
           <div>
             <div class="meta-item-label">Course Lecturer</div>
-            <div class="meta-item-val">
-              Malam Nura Muhammad
-            </div>
+            <div class="meta-item-val">Malam Nura Muhammad</div>
           </div>
-
           <div>
             <div class="meta-item-label">Academic Session</div>
-            <div class="meta-item-val">
-              2026/2027 Session
-            </div>
+            <div class="meta-item-val">2026/2027 Session</div>
           </div>
-
         </div>
       </div>
 
-
-      <!-- CORE FEATURES -->
+      <!-- Core Features Grid -->
       <div class="features-grid">
-
         <div class="feature-card">
           <div class="feature-icon-box blue">📱</div>
-
           <h3>Dynamic QR Code Generator</h3>
-
           <p>
-            Lecturers generate time-bound QR codes for individual
-            lecture sessions, displayed in full-screen projector mode
-            with live countdown timers.
+            Lecturers generate time-bound, cryptographically signed lecture session QR codes displayed in full-screen projector mode with live countdown timers.
           </p>
         </div>
 
         <div class="feature-card green">
           <div class="feature-icon-box green">📷</div>
-
           <h3>Authenticated Camera Scanner</h3>
-
           <p>
-            Students scan lecture QR codes using mobile device cameras
-            with instant verification and a six-character manual code
-            fallback.
+            Students scan the lecture QR code using mobile device cameras with instant verification, accompanied by a 6-character manual code fallback.
           </p>
         </div>
 
         <div class="feature-card amber">
           <div class="feature-icon-box amber">⏳</div>
-
           <h3>Automated Latecomer Detection</h3>
-
           <p>
-            Attendance timestamps are compared against the permitted
-            attendance threshold to categorize students as Present
-            or Late.
+            The backend compares check-in timestamps against lecturer-configured late thresholds, automatically categorizing students as Present or Late.
           </p>
         </div>
 
         <div class="feature-card purple">
           <div class="feature-icon-box purple">🛡️</div>
-
-          <h3>Duplicate Attendance Prevention</h3>
-
+          <h3>Atomic Duplicate Prevention</h3>
           <p>
-            Database constraints prevent a student from registering
-            attendance more than once for the same lecture session.
+            Enforces atomic transactional guarantees with compound keys (<code>session_id + student_id</code>) ensuring no student can register attendance twice.
           </p>
         </div>
-
       </div>
 
-
-      <!-- PROJECT OBJECTIVES -->
+      <!-- Project Objectives Banner -->
       <div class="panel">
-
         <div class="panel-header">
           <div class="panel-title">
             <h2>🎯 Core Project Objectives (GET 411)</h2>
           </div>
         </div>
-
         <div class="panel-body">
-          <ul
-            style="padding-left: 20px; line-height: 1.8; color: var(--gray-700);"
-          >
-            <li>
-              Digitize attendance recording across university lecture halls.
-            </li>
-
-            <li>
-              Allow lecturers to generate unique QR codes for lecture sessions.
-            </li>
-
-            <li>
-              Allow authenticated students to scan QR codes using cameras.
-            </li>
-
-            <li>
-              Record attendance timestamps using trusted backend operations.
-            </li>
-
-            <li>
-              Identify students who arrive after the permitted attendance time.
-            </li>
-
-            <li>
-              Prevent duplicate attendance submissions using database constraints.
-            </li>
-
-            <li>
-              Provide attendance dashboards and downloadable CSV reports.
-            </li>
+          <ul style="padding-left: 20px; line-height: 1.8; color: var(--gray-700);">
+            <li>Digitize the process of recording lecture attendance across university lecture halls.</li>
+            <li>Allow lecturers to generate unique, secure QR codes for individual lecture sessions.</li>
+            <li>Allow authenticated students to scan QR codes using their mobile or computer cameras.</li>
+            <li>Automatically record trusted server date and time stamps upon verification.</li>
+            <li>Accurately identify students who arrive after the permitted attendance time threshold.</li>
+            <li>Prevent duplicate attendance submissions through atomic database constraints.</li>
+            <li>Provide real-time attendance dashboards and downloadable CSV analytical reports.</li>
           </ul>
         </div>
-
       </div>
-
     </section>
 
-
-    <!-- 2. STUDENT PORTAL -->
+    <!-- 2. STUDENT PORTAL VIEW -->
     <section id="student-view" class="app-view">
       <div id="student-view-content">
         <!-- Rendered dynamically by js/student.js -->
       </div>
     </section>
 
-
-    <!-- 3. LECTURER CONSOLE -->
+    <!-- 3. LECTURER CONSOLE VIEW -->
     <section id="lecturer-view" class="app-view">
       <div id="lecturer-view-content">
         <!-- Rendered dynamically by js/lecturer.js -->
       </div>
     </section>
 
-
-    <!-- 4. ADMINISTRATOR REGISTRY -->
+    <!-- 4. ADMINISTRATOR REGISTRY VIEW -->
     <section id="admin-view" class="app-view">
       <div id="admin-view-content">
         <!-- Rendered dynamically by js/admin.js -->
       </div>
     </section>
 
-
-    <!-- 5. PROJECT INFORMATION -->
+    <!-- 5. PROJECT INFO & TEAM VIEW -->
     <section id="project-info-view" class="app-view">
       <div id="project-info-view-content">
         <!-- Rendered dynamically by js/project-info.js -->
@@ -430,289 +258,154 @@
 
   </main>
 
-
-  <!-- =====================================================
-       LECTURE PROJECTOR SCREEN
-  ====================================================== -->
+  <!-- Projector Screen Overlay Modal -->
   <div id="projector-modal-overlay" class="projector-overlay">
-
     <div class="projector-card">
-
       <div class="projector-header">
-
-        <div class="projector-institution">
-          FEDERAL UNIVERSITY DUTSIN-MA • GET 411 GROUP 6
-        </div>
-
-        <div id="projector-course-title" class="projector-course">
-          GET 411: Artificial Intelligence Mini Project
-        </div>
-
-        <div
-          id="projector-venue-info"
-          style="font-size: 0.95rem; color: var(--gray-600); margin-top: 6px;"
-        >
+        <div class="projector-institution">FEDERAL UNIVERSITY DUTSIN-MA • GET 411 GROUP 6</div>
+        <div id="projector-course-title" class="projector-course">GET 411: Artificial Intelligence Mini Project</div>
+        <div id="projector-venue-info" style="font-size: 0.95rem; color: var(--gray-600); margin-top: 6px;">
           Venue: FUDMA Lecture Hall 3B | Date: 2026-10-22
         </div>
-
       </div>
 
-      <div
-        style="font-weight: 700; color: var(--primary-800); margin-bottom: 8px;"
-      >
+      <div style="font-weight: 700; color: var(--primary-800); margin-bottom: 8px;">
         SCAN WITH STUDENT PORTAL TO REGISTER ATTENDANCE
       </div>
 
-      <div
-        id="projector-qr-container"
-        class="projector-qr-wrapper"
-      >
-        <!-- QR code rendered dynamically -->
+      <div id="projector-qr-container" class="projector-qr-wrapper">
+        <!-- QR Code Canvas rendered dynamically -->
       </div>
 
       <div>
         <div class="projector-manual-code">
-          <span id="projector-manual-code-val">
-            Lecture Code: AI4116
-          </span>
+          <span id="projector-manual-code-val">Lecture Code: AI4116</span>
         </div>
-
         <div style="font-size: 0.8rem; color: var(--gray-500);">
-          Alternative code if the student camera is unavailable.
+          (Alternative code if student camera is unavailable)
         </div>
       </div>
 
       <div class="projector-timer-bar">
         <span>Attendance Window Closes In:</span>
-
-        <span
-          id="projector-timer-countdown"
-          class="timer-countdown"
-        >
-          45:00
-        </span>
+        <span id="projector-timer-countdown" class="timer-countdown">45:00</span>
       </div>
 
       <div style="margin-top: 24px;">
-        <button
-          class="btn btn-secondary"
-          onclick="window.lecturerCtrl.closeProjectorModal()"
-        >
+        <button class="btn btn-secondary" onclick="window.lecturerCtrl.closeProjectorModal()">
           Close Projector Screen
         </button>
       </div>
-
     </div>
   </div>
 
-
-  <!-- =====================================================
-       CAMERA QR SCANNER
-  ====================================================== -->
+  <!-- Camera QR Scanner Modal -->
   <div id="scanner-modal" class="scanner-modal">
-
     <div class="scanner-card">
-
-      <div
-        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;"
-      >
-        <h3 style="font-size: 1.1rem; color: var(--gray-900);">
-          Scan Lecture QR Code
-        </h3>
-
-        <button
-          class="close-btn"
-          onclick="window.studentCtrl.closeScannerModal()"
-        >
-          &times;
-        </button>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 1.1rem; color: var(--gray-900);">Scan Lecture QR Code</h3>
+        <button class="close-btn" onclick="window.studentCtrl.closeScannerModal()">&times;</button>
       </div>
 
-      <p
-        style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 8px;"
-      >
-        Point your camera at the QR code displayed on the lecturer's
-        projector screen.
+      <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 8px;">
+        Point your camera at the QR code displayed on the lecturer's projector screen.
       </p>
 
-      <div
-        id="scanner-error-msg"
-        style="display: none; background: #fee2e2; color: #991b1b; padding: 10px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 10px;"
-      ></div>
+      <div id="scanner-error-msg" style="display: none; background: #fee2e2; color: #991b1b; padding: 10px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 10px;"></div>
 
-      <div
-        id="scanner-viewfinder"
-        class="scanner-viewport"
-      >
-        <!-- Camera stream injected by Html5Qrcode -->
+      <div id="scanner-viewfinder" class="scanner-viewport">
+        <!-- Video stream is injected here by Html5Qrcode -->
       </div>
 
       <div style="text-align: center; margin-top: 10px;">
-
-        <label
-          style="font-size: 0.82rem; color: var(--primary-700); cursor: pointer; text-decoration: underline; font-weight: 500;"
-        >
+        <label style="font-size: 0.82rem; color: var(--primary-700); cursor: pointer; text-decoration: underline; font-weight: 500;">
           📁 Or select / upload a photo of the QR code
-
-          <input
-            type="file"
-            id="scanner-file-input"
-            accept="image/*"
-            style="display: none;"
-            onchange="
-              if (this.files && this.files[0]) {
-                window.attendanceEngine.scanImageFile(
-                  this.files[0],
-                  (r) => {
-                    window.studentCtrl.closeScannerModal();
-                    window.studentCtrl.displayAttendanceResult(r);
-                    window.studentCtrl.render();
-                  },
-                  (e) => {
-                    const err = document.getElementById('scanner-error-msg');
-                    if (err) {
-                      err.innerText = e.message;
-                      err.style.display = 'block';
-                    }
-                  }
-                );
-              }
-            "
+          <input 
+            type="file" 
+            id="scanner-file-input" 
+            accept="image/*" 
+            style="display: none;" 
+            onchange="if (this.files && this.files[0]) { window.attendanceEngine.scanImageFile(this.files[0], (r) => { window.studentCtrl.closeScannerModal(); window.studentCtrl.displayAttendanceResult(r); window.studentCtrl.render(); }, (e) => { const err = document.getElementById('scanner-error-msg'); if (err) { err.innerText = e.message; err.style.display = 'block'; } }); }" 
           />
         </label>
-
       </div>
 
-      <div
-        style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;"
-      >
-
-        <button
-          class="btn btn-secondary btn-sm"
-          onclick="window.studentCtrl.closeScannerModal(); window.studentCtrl.openManualCodeModal();"
-        >
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
+        <button class="btn btn-secondary btn-sm" onclick="window.studentCtrl.closeScannerModal(); window.studentCtrl.openManualCodeModal();">
           ⌨️ Enter Code Manually
         </button>
-
-        <button
-          class="btn btn-danger btn-sm"
-          onclick="window.studentCtrl.closeScannerModal()"
-        >
+        <button class="btn btn-danger btn-sm" onclick="window.studentCtrl.closeScannerModal()">
           Cancel
         </button>
-
       </div>
-
     </div>
   </div>
 
-
-  <!-- =====================================================
-       GLOBAL MODAL
-  ====================================================== -->
+  <!-- Global Modal Dialog -->
   <div id="global-modal-overlay" class="modal-overlay">
-
     <div id="global-modal-dialog" class="modal-dialog">
-
       <div class="modal-header">
-
-        <h3
-          id="global-modal-title"
-          style="font-size: 1.15rem; color: var(--gray-900);"
-        >
-          Modal Title
-        </h3>
-
-        <button
-          class="close-btn"
-          onclick="window.app.closeModal()"
-        >
-          &times;
-        </button>
-
+        <h3 id="global-modal-title" style="font-size: 1.15rem; color: var(--gray-900);">Modal Title</h3>
+        <button class="close-btn" onclick="window.app.closeModal()">&times;</button>
       </div>
-
       <div id="global-modal-body" class="modal-body">
-        <!-- Dynamic modal content -->
+        <!-- Dynamic content injected here -->
       </div>
-
     </div>
   </div>
 
-
-  <!-- =====================================================
-       GLOBAL TOAST NOTIFICATIONS
-  ====================================================== -->
+  <!-- Global Toast Notifications Container -->
   <div id="global-toast-container" class="toast-container"></div>
 
-
-  <!-- =====================================================
-       INSTITUTIONAL FOOTER
-  ====================================================== -->
+  <!-- Institutional Academic Footer -->
   <footer class="fudma-footer">
-
     <div class="footer-content">
-
       <div class="footer-academic-meta">
         <strong>FEDERAL UNIVERSITY DUTSIN-MA (FUDMA)</strong>
         <span>•</span>
-
         <span>GET 411: Artificial Intelligence Mini Project</span>
         <span>•</span>
-
         <span class="badge-group6">GROUP 6</span>
         <span>•</span>
-
         <span>Session: 2026/2027</span>
       </div>
-
       <div>
-        <span>
-          Course Lecturer: <strong>Malam Nura Muhammad</strong>
-        </span>
+        <span>Course Lecturer: <strong>Malam Nura Muhammad</strong></span>
       </div>
-
     </div>
   </footer>
 
+  <!-- Vendor Libraries (Self-Contained Offline + Fallback) -->
+  <script src="./assets/vendor/qrcode.min.js"></script>
+  <script src="./assets/vendor/html5-qrcode.min.js"></script>
 
-  <!-- =====================================================
-       VENDOR LIBRARIES
-  ====================================================== -->
-  <script src="/assets/vendor/qrcode.min.js"></script>
-  <script src="/assets/vendor/html5-qrcode.min.js"></script>
-
-
-  <!-- =====================================================
-       FIREBASE COMPATIBILITY SDKs
-       Retained for the existing Firebase operating mode.
-  ====================================================== -->
+  <!-- Firebase SDKs (Compat format for seamless browser execution) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
 
+  <!-- Supabase Client & Integration Bridge -->
+  <script>
+    window.supabaseClient = null;
+    window.supabaseReady = new Promise(function(resolve) {
+      window._resolveSupabase = resolve;
+    });
+  </script>
+  <script type="module" src="./js/supabase-client.js"></script>
+  <script src="./js/supabase-bridge.js"></script>
 
-  <!-- =====================================================
-       SUPABASE CLIENT
-       The bridge uses Vite's ES module support.
-  ====================================================== -->
-  <script type="module" src="/js/supabase-bridge.js"></script>
+  <!-- Application Logic Modules -->
+  <script src="./js/firebase-config.js"></script>
+  <script src="./js/db-service.js"></script>
+  <script src="./js/auth.js"></script>
+  <script src="./js/attendance.js"></script>
+  <script src="./js/admin.js"></script>
+  <script src="./js/lecturer.js"></script>
+  <script src="./js/student.js"></script>
+  <script src="./js/project-info.js"></script>
+  <script src="./js/app.js"></script>
 
-
-  <!-- =====================================================
-       EXISTING APPLICATION SCRIPTS
-       These remain classic scripts to preserve compatibility.
-  ====================================================== -->
-  <script src="/js/firebase-config.js"></script>
-  <script src="/js/db-service.js"></script>
-  <script src="/js/auth.js"></script>
-  <script src="/js/attendance.js"></script>
-  <script src="/js/admin.js"></script>
-  <script src="/js/lecturer.js"></script>
-  <script src="/js/student.js"></script>
-  <script src="/js/project-info.js"></script>
-  <script src="/js/app.js"></script>
 
 </body>
 </html>
