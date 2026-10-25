@@ -155,7 +155,7 @@ class SupabaseBridge {
       department: c.department,
       academicSession: c.academic_session,
       semester: c.semester,
-      lecturerUid: c.lecturer_id,
+      lecturerUid: c.lecturer_uid || c.lecturer_id,
       enrolledStudentIds: enrollments,
       createdAt: c.created_at,
       updatedAt: c.updated_at
@@ -168,7 +168,7 @@ class SupabaseBridge {
 
     let query = client.from('courses').select('*, course_enrollments(student_id)');
     if (lecturerId) {
-      query = query.eq('lecturer_id', lecturerId);
+      query = query.or(`lecturer_id.eq.${lecturerId},lecturer_uid.eq.${lecturerId}`);
     }
     const { data, error } = await query;
     if (error) {

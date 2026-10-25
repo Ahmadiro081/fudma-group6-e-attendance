@@ -55,9 +55,28 @@ export default async function handler(req, res) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mkhzvzgluddaqaxilgkz.supabase.co';
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Helper to inspect JWT claims without external dependencies
+function getJwtPayload(token) {
+  if (!token || typeof token !== 'string') return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length >= 2) {
+      return JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    }
+  } catch (e) {}
+  return null;
+}
+
   if (!supabaseUrl || !serviceRoleKey) {
     return res.status(500).json({
       error: 'Server authentication configuration is incomplete. Please ensure SUPABASE_SERVICE_ROLE_KEY is set in Vercel environment variables.'
+    });
+  }
+
+  const jwtPayload = getJwtPayload(serviceRoleKey);
+  if (jwtPayload && jwtPayload.role === 'anon') {
+    return res.status(500).json({
+      error: 'Vercel Configuration Error: SUPABASE_SERVICE_ROLE_KEY is set to your public anonymous key ("anon"). It must be set to the secret "service_role" key from Supabase Project Settings -> API.'
     });
   }
 

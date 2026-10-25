@@ -5,18 +5,25 @@
  * 
  * Secure server-side student self-registration using Supabase Admin SDK.
  * Creates an authenticated user in Supabase Auth, provisions their institutional
- * profile in public.profiles (role: student, status: active), enrolls them in GET 411
+ * profile in public.profiles (role: student, status: active), safely enrolls them in GET 411
  * if the course exists, and records an immutable audit log entry.
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-// NOTE ON SERVERLESS RATE LIMITING:
-// The in-memory rateLimitMap below operates on a per-warm-lambda-instance basis.
-// In a serverless deployment such as Vercel, isolated container instances do not share memory.
-// For global distributed rate limiting across all concurrent serverless instances,
-// an external key-value store (e.g., Upstash Redis or Vercel KV) would be required.
-// This in-process map provides immediate local throttling against rapid brute-force attempts per instance.
+// Helper to inspect JWT claims without external dependencies
+function getJwtPayload(token) {
+  if (!token || typeof token !== 'string') return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length >= 2) {
+      return JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    }
+  } catch (e) {}
+  return null;
+}
+
+// In-memory rate limiting (max 5 registration attempts per IP per minute per serverless instance)
 const rateLimitMap = new Map();
 
 function checkRateLimit(ip) {
@@ -82,12 +89,20 @@ export default async function handler(req, res) {
     });
   }
 
+  // 2. Validate that the service role key possesses administrative claims
+  const jwtPayload = getJwtPayload(serviceRoleKey);
+  if (jwtPayload && jwtPayload.role === 'anon') {
+    return res.status(500).json({
+      error: 'Vercel Configuration Error: SUPABASE_SERVICE_ROLE_KEY is set to your public anonymous key ("anon"). It must be set to the secret "service_role" key from Supabase Project Settings -> API. The anonymous key cannot provision users.'
+    });
+  }
+
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
 
   try {
-    // 2. Prevent duplicate email and matriculation number
+    // 3. Prevent duplicate email and matriculation number
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id, email, matric_number')
@@ -101,7 +116,7 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: 'An account with this matriculation number already exists.' });
     }
 
-    // 3. Create user in Supabase Auth via Admin SDK (auto-confirmed)
+    // 4. Create user in Supabase Auth via Admin SDK (auto-confirmed)
     const { data: authCreated, error: authErr } = await supabaseAdmin.auth.admin.createUser({
       email: cleanEmail,
       password: password,
@@ -116,12 +131,18 @@ export default async function handler(req, res) {
 
     if (authErr || !authCreated?.user) {
       console.error('[/api/auth/register auth.admin.createUser error]:', authErr);
+      const msg = (authErr?.message || '').toLowerCase();
+      if (msg.includes('user not allowed') || authErr?.status === 403) {
+        return res.status(403).json({
+          error: 'Registration rejected by Supabase Auth ("User not allowed"). In Vercel Project Settings -> Environment Variables, ensure SUPABASE_SERVICE_ROLE_KEY is set to the secret "service_role" key (not the anon key). Also verify in Supabase Dashboard (Authentication -> Providers -> Email) that "Allow new users to sign up" is enabled.'
+        });
+      }
       return res.status(400).json({ error: authErr?.message || 'Failed to create student authentication account.' });
     }
 
     const newUid = authCreated.user.id;
 
-    // 4. Create profile with role strictly enforced as 'student' and status 'active'
+    // 5. Create profile with role strictly enforced as 'student' and status 'active'
     // Matches schema: public.profiles(id, full_name, matric_number, email, role, department, level, status, created_at, updated_at)
     const profilePayload = {
       id: newUid,
@@ -151,13 +172,13 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: `Registration failed: ${profileErr.message}. Account rolled back.` });
     }
 
-    // 5. Safely enroll student in GET 411 ONLY IF the course exists in public.courses
-    // Matches schema: public.course_enrollments(course_id, student_id, enrolled_at)
+    // 6. Safely enroll student in GET 411 ONLY IF the course exists in public.courses
+    // Note: In public.courses, id is UUID. Query by course_code text to avoid UUID syntax errors.
     try {
       const { data: get411Course } = await supabaseAdmin
         .from('courses')
         .select('id, course_code')
-        .or('id.eq.course_get411,course_code.eq.GET 411')
+        .ilike('course_code', '%GET%411%')
         .limit(1)
         .maybeSingle();
 
@@ -180,7 +201,7 @@ export default async function handler(req, res) {
       console.warn('[/api/auth/register course enrollment exception]:', enrollException);
     }
 
-    // 6. Record immutable audit log entry using verified schema
+    // 7. Record immutable audit log entry using verified schema
     // Matches schema: public.audit_logs(event_type, actor_id, actor_name, target_id, metadata, created_at)
     try {
       const { error: auditErr } = await supabaseAdmin.from('audit_logs').insert({
@@ -198,7 +219,7 @@ export default async function handler(req, res) {
       console.warn('[/api/auth/register audit log exception]:', auditException);
     }
 
-    // 7. Obtain active session tokens for the newly registered student
+    // 8. Obtain active session tokens for the newly registered student
     let sessionData = null;
     try {
       const { data: signInResult } = await supabaseAdmin.auth.signInWithPassword({
@@ -216,7 +237,7 @@ export default async function handler(req, res) {
       console.warn('[/api/auth/register auto-signin notice]:', sessionErr);
     }
 
-    // 8. Return sanitized response with session
+    // 9. Return sanitized response with session
     return res.status(201).json({
       success: true,
       message: 'Student registration completed successfully.',
