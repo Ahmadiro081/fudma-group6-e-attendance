@@ -162,7 +162,8 @@ function getJwtPayload(token) {
         department: userProfile.department,
         status: userProfile.status,
         matricNumber: userProfile.matric_number || null,
-        level: userProfile.level || null
+        staffId: userProfile.staff_id || null,
+        level: userProfile.level || authData.user?.user_metadata?.level || '400L'
       }
     });
   } catch (err) {

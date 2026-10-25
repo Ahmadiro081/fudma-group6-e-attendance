@@ -143,7 +143,8 @@ export default async function handler(req, res) {
     const newUid = authCreated.user.id;
 
     // 5. Create profile with role strictly enforced as 'student' and status 'active'
-    // Matches schema: public.profiles(id, full_name, matric_number, email, role, department, level, status, created_at, updated_at)
+    // Conforms to verified public.profiles schema: (id, full_name, matric_number, email, role, department, status, created_at, updated_at)
+    // Supports 'level' column if present; gracefully omits it if not in schema cache.
     const profilePayload = {
       id: newUid,
       full_name: cleanFullName,
@@ -151,15 +152,24 @@ export default async function handler(req, res) {
       email: cleanEmail,
       role: 'student',
       department: cleanDept,
-      level: cleanLevel,
       status: 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
-    const { error: profileErr } = await supabaseAdmin
+    let { error: profileErr } = await supabaseAdmin
       .from('profiles')
-      .upsert(profilePayload);
+      .upsert({ ...profilePayload, level: cleanLevel });
+
+    // If PostgREST schema cache rejects the 'level' column because it was not migrated in public.profiles,
+    // gracefully retry without the 'level' column so registration succeeds immediately without rollbacks.
+    if (profileErr && (profileErr.message.includes("'level' column") || profileErr.message.includes('level'))) {
+      console.warn('[/api/auth/register]: "level" column not present in public.profiles. Retrying without level column.');
+      const retryResult = await supabaseAdmin
+        .from('profiles')
+        .upsert(profilePayload);
+      profileErr = retryResult.error;
+    }
 
     if (profileErr) {
       console.error('[/api/auth/register profile upsert error]:', profileErr);

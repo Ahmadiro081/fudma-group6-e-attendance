@@ -178,21 +178,21 @@ describe('FUDMA Authentication & Registration Test Suite', () => {
   });
 
   describe('5. Schema Verification & Field Names', () => {
-    it('validates that profiles table schema expectations match SQL migrations', () => {
-      const expectedColumns = [
+    it('validates verified production profiles table schema and optional level column', () => {
+      const verifiedProductionColumns = [
         'id',
         'full_name',
         'matric_number',
+        'staff_id',
         'email',
         'role',
         'department',
-        'level',
         'status',
         'created_at',
         'updated_at'
       ];
-      assert.ok(expectedColumns.includes('level'), 'profiles table must include level column');
-      assert.ok(!expectedColumns.includes('staff_id'), 'profiles table must not include unmigrated staff_id column');
+      assert.ok(verifiedProductionColumns.includes('staff_id'), 'profiles table includes staff_id column in production');
+      assert.ok(verifiedProductionColumns.includes('matric_number'), 'profiles table includes matric_number column');
     });
 
     it('validates that course_enrollments uses student_id (UUID) and course_id', () => {

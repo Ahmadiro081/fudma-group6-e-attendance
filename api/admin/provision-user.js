@@ -66,12 +66,20 @@ export default async function handler(req, res) {
 
     const cleanEmail = email.trim().toLowerCase();
 
+    const cleanStaffId = role === 'lecturer' ? (staffId?.trim().toUpperCase() || null) : null;
+    const cleanLevel = role === 'student' ? (level?.trim() || '400L') : 'Staff';
+
     // 4. Create user in Supabase Auth via Admin API
     const { data: authCreated, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email: cleanEmail,
       password: password,
       email_confirm: true,
-      user_metadata: { full_name: fullName.trim() }
+      user_metadata: {
+        full_name: fullName.trim(),
+        role: role,
+        level: cleanLevel,
+        staff_id: cleanStaffId
+      }
     });
 
     if (createErr || !authCreated.user) {
@@ -89,13 +97,21 @@ export default async function handler(req, res) {
       department: department?.trim() || 'Faculty of Engineering',
       status: 'active',
       matric_number: role === 'student' ? (matricNumber?.trim().toUpperCase() || null) : null,
-      level: role === 'student' ? (level?.trim() || '400L') : 'Staff',
+      staff_id: cleanStaffId,
       updated_at: new Date().toISOString()
     };
 
-    const { error: saveErr } = await supabaseAdmin
+    let { error: saveErr } = await supabaseAdmin
       .from('profiles')
-      .upsert(profilePayload);
+      .upsert({ ...profilePayload, level: cleanLevel });
+
+    if (saveErr && (saveErr.message.includes("'level' column") || saveErr.message.includes('level'))) {
+      console.warn('[/api/admin/provision-user]: "level" column not present in public.profiles. Retrying without level column.');
+      const retryResult = await supabaseAdmin
+        .from('profiles')
+        .upsert(profilePayload);
+      saveErr = retryResult.error;
+    }
 
     if (saveErr) {
       // Rollback auth user creation if profile write fails

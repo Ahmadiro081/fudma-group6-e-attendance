@@ -122,20 +122,31 @@ class SupabaseBridge {
       department: userData.department || 'Faculty of Engineering',
       status: userData.status || 'active',
       matric_number: userData.matricNumber ? userData.matricNumber.trim().toUpperCase() : null,
-      level: userData.level || '400L',
       staff_id: userData.staffId ? userData.staffId.trim().toUpperCase() : null,
       updated_at: new Date().toISOString()
     };
+
+    const cleanLevel = userData.level || '400L';
 
     if (uid) {
       profilePayload.id = uid;
     }
 
-    const { data, error } = await client
+    let { data, error } = await client
       .from('profiles')
-      .upsert(profilePayload)
+      .upsert({ ...profilePayload, level: cleanLevel })
       .select()
       .single();
+
+    if (error && (error.message.includes("'level' column") || error.message.includes('level'))) {
+      const retryResult = await client
+        .from('profiles')
+        .upsert(profilePayload)
+        .select()
+        .single();
+      data = retryResult.data;
+      error = retryResult.error;
+    }
 
     if (error) {
       console.error('[SupabaseBridge] saveUser error:', error);
