@@ -86,8 +86,28 @@ function getJwtPayload(token) {
   });
 
   try {
-    // 1. Resolve identifier (institutional email or matriculation number)
-    if (cleanInput.includes('@')) {
+    // 1. Resolve identifier (institutional email, matriculation number, staff ID, or LECTURE@2026 onboarding alias)
+    let isOnboardingAlias = false;
+
+    if (cleanInput.toUpperCase() === 'LECTURE@2026') {
+      isOnboardingAlias = true;
+      // Onboarding alias specifically maps to lead lecturer Malam Nura Muhammad
+      const { data: leadLecturer } = await supabaseAdmin
+        .from('profiles')
+        .select('id, email, status, role')
+        .or('email.eq.nura.muhammad@fudma.edu.ng,staff_id.eq.FUDMA/STAFF/ENG/082,role.eq.lecturer')
+        .limit(1)
+        .maybeSingle();
+
+      if (leadLecturer) {
+        if (leadLecturer.status === 'deactivated') {
+          return res.status(403).json({ error: 'This lecturer account has been deactivated. Contact the Academic Registry.' });
+        }
+        resolvedEmail = leadLecturer.email;
+      } else {
+        resolvedEmail = 'nura.muhammad@fudma.edu.ng';
+      }
+    } else if (cleanInput.includes('@')) {
       resolvedEmail = cleanInput.toLowerCase();
       // Check status of email user before authentication
       const { data: profile } = await supabaseAdmin
@@ -101,14 +121,15 @@ function getJwtPayload(token) {
       }
     } else {
       const cleanMatric = cleanInput.toUpperCase().replace(/\s+/g, '');
+      const rawTrim = cleanInput.trim();
       const { data: profile, error: lookupErr } = await supabaseAdmin
         .from('profiles')
         .select('id, email, status, role')
-        .or(`matric_number.eq.${cleanMatric},matric_number.ilike.${cleanInput.trim()}`)
+        .or(`matric_number.eq.${cleanMatric},matric_number.ilike.${rawTrim},staff_id.eq.${rawTrim},staff_id.ilike.${rawTrim}`)
         .maybeSingle();
 
       if (lookupErr || !profile) {
-        // Generic credential error - do not reveal if matric exists
+        // Generic credential error - do not reveal if matric or staff ID exists
         return res.status(401).json({ error: 'Invalid institutional credentials or password.' });
       }
 
@@ -146,7 +167,12 @@ function getJwtPayload(token) {
       return res.status(403).json({ error: 'This account has been deactivated. Contact the Academic Registry.' });
     }
 
-    // 4. Return session tokens and verified profile securely to the browser
+    // 4. Determine if caller is required to update their temporary credentials
+    const isDefaultTempPassword = password === 'Fudma@2026' || password.toLowerCase() === 'fudma@2026';
+    const metadataMustChange = authData.user?.user_metadata?.must_change_password === true;
+    const mustChangePassword = Boolean(isOnboardingAlias || isDefaultTempPassword || metadataMustChange);
+
+    // 5. Return session tokens and verified profile securely to the browser
     return res.status(200).json({
       session: {
         access_token: authData.session.access_token,
@@ -163,8 +189,10 @@ function getJwtPayload(token) {
         status: userProfile.status,
         matricNumber: userProfile.matric_number || null,
         staffId: userProfile.staff_id || null,
-        level: userProfile.level || authData.user?.user_metadata?.level || '400L'
-      }
+        level: userProfile.level || authData.user?.user_metadata?.level || '400L',
+        mustChangePassword
+      },
+      mustChangePassword
     });
   } catch (err) {
     console.error('[/api/auth/login error]:', err);

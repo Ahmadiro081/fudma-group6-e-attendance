@@ -409,22 +409,59 @@ class LecturerController {
 
     const course = await window.dbService.getCourseById(courseId);
     const user = window.authService.currentUser;
+    const token = window.authService.getAccessToken();
 
-    const newSession = await window.dbService.saveSession({
-      courseId,
-      courseCode: course.courseCode,
-      courseTitle: course.courseTitle,
-      lecturerUid: user.uid,
-      lecturerName: user.fullName,
-      venue,
-      date,
-      startTime,
-      lateThreshold,
-      closeTime,
-      allowManualCode,
-      manualCode,
-      status: 'active'
-    });
+    let newSession = null;
+
+    if (token) {
+      try {
+        const resp = await fetch('/api/lecturer/create-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            courseId,
+            venue,
+            date,
+            startTime,
+            lateThreshold,
+            closeTime,
+            allowManualCode,
+            manualCode
+          })
+        });
+
+        if (resp.ok) {
+          const body = await resp.json();
+          newSession = body.session;
+        } else {
+          const errData = await resp.json().catch(() => ({}));
+          console.warn('[handleCreateSession API error, falling back to dbService]:', errData.error);
+        }
+      } catch (apiErr) {
+        console.warn('[handleCreateSession fetch error, falling back to dbService]:', apiErr);
+      }
+    }
+
+    if (!newSession) {
+      newSession = await window.dbService.saveSession({
+        courseId,
+        courseCode: course.courseCode,
+        courseTitle: course.courseTitle,
+        lecturerUid: user.uid,
+        lecturerName: user.fullName,
+        venue,
+        date,
+        startTime,
+        lateThreshold,
+        closeTime,
+        allowManualCode,
+        manualCode,
+        status: 'active'
+      });
+    }
 
     window.app.closeModal();
     this.selectedSessionId = newSession.id;

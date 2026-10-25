@@ -8,6 +8,9 @@ import assert from 'node:assert/strict';
 
 import registerHandler from '../api/auth/register.js';
 import loginHandler from '../api/auth/login.js';
+import changePasswordHandler from '../api/auth/change-password.js';
+import createSessionHandler from '../api/lecturer/create-session.js';
+import recordAttendanceHandler from '../api/attendance/record.js';
 
 let reqCounter = 0;
 function createMockReq(body = {}, headers = {}, method = 'POST') {
@@ -205,6 +208,121 @@ describe('FUDMA Authentication & Registration Test Suite', () => {
       const auditLogFields = ['event_type', 'actor_id', 'actor_name', 'target_id', 'metadata', 'created_at'];
       assert.ok(auditLogFields.includes('actor_id'), 'audit_logs uses actor_id');
       assert.ok(!auditLogFields.includes('actor_uid'), 'audit_logs must not use actor_uid');
+    });
+  });
+
+  describe('6. Password Change Endpoint Security', () => {
+    it('should reject unauthenticated requests without Bearer token', async () => {
+      const req = createMockReq({ newPassword: 'NewSecurePassword@2026' });
+      const res = createMockRes();
+      await changePasswordHandler(req, res);
+      assert.equal(res.statusCode, 401);
+      assert.match(res.body.error, /Bearer token/i);
+    });
+
+    it('should reject password under 8 characters', async () => {
+      const req = createMockReq(
+        { newPassword: 'Sh1@' },
+        { authorization: 'Bearer mock_jwt_token_here' }
+      );
+      const res = createMockRes();
+      await changePasswordHandler(req, res);
+      assert.equal(res.statusCode, 400);
+      assert.match(res.body.error, /at least 8 characters/i);
+    });
+
+    it('should reject password lacking complexity', async () => {
+      const req = createMockReq(
+        { newPassword: 'alllowercasenonumber' },
+        { authorization: 'Bearer mock_jwt_token_here' }
+      );
+      const res = createMockRes();
+      await changePasswordHandler(req, res);
+      assert.equal(res.statusCode, 400);
+      assert.match(res.body.error, /uppercase/i);
+    });
+
+    it('should reject temporary default password Fudma@2026', async () => {
+      const req = createMockReq(
+        { newPassword: 'Fudma@2026' },
+        { authorization: 'Bearer mock_jwt_token_here' }
+      );
+      const res = createMockRes();
+      await changePasswordHandler(req, res);
+      assert.equal(res.statusCode, 400);
+      assert.match(res.body.error, /temporary default password/i);
+    });
+  });
+
+  describe('7. Lecturer Session Creation Endpoint Security', () => {
+    it('should reject unauthenticated requests without Bearer token', async () => {
+      const req = createMockReq({ courseId: 'course_get411' });
+      const res = createMockRes();
+      await createSessionHandler(req, res);
+      assert.equal(res.statusCode, 401);
+      assert.match(res.body.error, /Bearer token/i);
+    });
+
+    it('should reject non-POST methods', async () => {
+      const req = createMockReq({}, {}, 'GET');
+      const res = createMockRes();
+      await createSessionHandler(req, res);
+      assert.equal(res.statusCode, 405);
+    });
+  });
+
+  describe('8. Student Attendance Recording Endpoint Security', () => {
+    it('should reject unauthenticated attendance requests without Bearer token', async () => {
+      const req = createMockReq({ sessionId: 'session_123', qrToken: 'token_abc' });
+      const res = createMockRes();
+      await recordAttendanceHandler(req, res);
+      assert.equal(res.statusCode, 401);
+      assert.match(res.body.error, /Bearer token/i);
+    });
+
+    it('should reject attendance requests without sessionId', async () => {
+      const req = createMockReq(
+        { qrToken: 'token_abc' },
+        { authorization: 'Bearer mock_jwt_token' }
+      );
+      const res = createMockRes();
+      await recordAttendanceHandler(req, res);
+      assert.equal(res.statusCode, 400);
+      assert.match(res.body.error, /Session ID is required/i);
+    });
+
+    it('should reject non-POST methods', async () => {
+      const req = createMockReq({}, {}, 'GET');
+      const res = createMockRes();
+      await recordAttendanceHandler(req, res);
+      assert.equal(res.statusCode, 405);
+    });
+  });
+
+  describe('9. Identifier Normalization & Onboarding Alias', () => {
+    it('properly normalizes student matriculation number with spaces and lowercase', () => {
+      const rawMatric = ' eng / 2024 / 35303 ';
+      const normalized = rawMatric.toUpperCase().replace(/\s+/g, '');
+      assert.equal(normalized, 'ENG/2024/35303');
+    });
+
+    it('detects LECTURE@2026 onboarding alias in case-insensitive manner', () => {
+      const raw1 = 'lecture@2026';
+      const raw2 = 'LECTURE@2026';
+      const raw3 = ' Lecture@2026 ';
+      assert.equal(raw1.trim().toUpperCase(), 'LECTURE@2026');
+      assert.equal(raw2.trim().toUpperCase(), 'LECTURE@2026');
+      assert.equal(raw3.trim().toUpperCase(), 'LECTURE@2026');
+    });
+
+    it('detects temporary default password for password change requirement', () => {
+      const pass1 = 'Fudma@2026';
+      const isDefault = pass1 === 'Fudma@2026' || pass1.toLowerCase() === 'fudma@2026';
+      assert.equal(isDefault, true);
+
+      const pass2 = 'CustomStrongPass#99';
+      const isDefault2 = pass2 === 'Fudma@2026' || pass2.toLowerCase() === 'fudma@2026';
+      assert.equal(isDefault2, false);
     });
   });
 

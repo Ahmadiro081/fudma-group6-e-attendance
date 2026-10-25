@@ -43,6 +43,53 @@ class AuthService {
     return this.currentUser && this.currentUser.role === role;
   }
 
+  getAccessToken() {
+    let token = sessionStorage.getItem('fudma_access_token');
+    if (!token && window.supabaseClient) {
+      try {
+        const session = window.supabaseClient.auth.session ? window.supabaseClient.auth.session() : null;
+        if (session?.access_token) return session.access_token;
+      } catch (e) {}
+    }
+    return token;
+  }
+
+  async changePassword(newPassword) {
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error('Password must be at least 8 characters long.');
+    }
+    if (newPassword === 'Fudma@2026' || newPassword.toLowerCase() === 'fudma@2026') {
+      throw new Error('New password cannot be the temporary default password.');
+    }
+
+    const token = this.getAccessToken();
+    if (!token) {
+      throw new Error('No active authentication session. Please sign in again.');
+    }
+
+    const resp = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ newPassword })
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      throw new Error(data.error || 'Failed to update password.');
+    }
+
+    if (this.currentUser) {
+      this.currentUser.mustChangePassword = false;
+      sessionStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(this.currentUser));
+      this._notifyListeners();
+    }
+
+    return data;
+  }
+
   async _withTimeout(promise, ms = 7000, errorMsg = 'Network operation timed out.') {
     let timeoutId;
     const timeoutPromise = new Promise((_, reject) => {
@@ -93,6 +140,9 @@ class AuthService {
 
         if (resp.ok) {
           const body = await resp.json();
+          if (body.session?.access_token) {
+            sessionStorage.setItem('fudma_access_token', body.session.access_token);
+          }
           if (body.session && window.supabaseClient) {
             await window.supabaseClient.auth.setSession({
               access_token: body.session.access_token,
@@ -100,6 +150,9 @@ class AuthService {
             });
           }
           profile = body.user;
+          if (body.mustChangePassword) {
+            profile.mustChangePassword = true;
+          }
         } else {
           const errData = await resp.json().catch(() => ({}));
           const status = resp.status;
@@ -606,6 +659,7 @@ class AuthService {
 
     this.currentUser = null;
     sessionStorage.removeItem(STORAGE_KEY_AUTH_USER);
+    sessionStorage.removeItem('fudma_access_token');
     this._notifyListeners();
   }
 }

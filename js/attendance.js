@@ -13,25 +13,17 @@ class AttendanceEngine {
 
   // --- QR Code Generation ---
   generateSessionToken(session) {
-    // Generate a structured, verifiable payload
-    // Does not expose passwords or sensitive private student information
-    const timestampNonce = Date.now();
-    const tokenObj = {
-      app: 'FUDMA_E_ATTENDANCE',
-      group: 'GROUP_6',
-      sessionId: session.id,
-      courseCode: session.courseCode,
-      nonce: timestampNonce,
-      signature: btoa(`${session.id}:${session.startTime}:${timestampNonce}`).slice(0, 16)
-    };
-    return JSON.stringify(tokenObj);
+    if (session.mobileQrUrl) return session.mobileQrUrl;
+    const origin = window.location.origin || 'https://fudma-group6-e-attendance.vercel.app';
+    const token = session.qrToken || session.qr_token || btoa(`${session.id}:${session.startTime}:${Date.now()}`).slice(0, 24);
+    return `${origin}/#attendance?sessionId=${encodeURIComponent(session.id)}&token=${encodeURIComponent(token)}`;
   }
 
   renderQRCode(containerElement, session, size = 250) {
     if (!containerElement) return;
     containerElement.innerHTML = '';
 
-    const payload = this.generateSessionToken(session);
+    const payload = session.mobileQrUrl || this.generateSessionToken(session);
 
     if (typeof QRCode !== 'undefined') {
       try {
@@ -159,15 +151,31 @@ class AttendanceEngine {
 
     try {
       let targetSessionId = null;
+      let qrToken = null;
 
-      // Parse JSON structure if formatted
-      if (decodedText.startsWith('{') && decodedText.endsWith('}')) {
-        const parsed = JSON.parse(decodedText);
-        if (parsed.app === 'FUDMA_E_ATTENDANCE' && parsed.sessionId) {
-          targetSessionId = parsed.sessionId;
-        } else if (parsed.sessionId) {
-          targetSessionId = parsed.sessionId;
+      // Parse full URL or URL with hash
+      if (decodedText.includes('sessionId=')) {
+        try {
+          const urlStr = decodedText.startsWith('http') ? decodedText : `https://dummy.com/${decodedText}`;
+          const urlObj = new URL(urlStr);
+          let searchParams = urlObj.searchParams;
+          if (urlObj.hash && urlObj.hash.includes('?')) {
+            const hashQuery = urlObj.hash.split('?')[1];
+            searchParams = new URLSearchParams(hashQuery);
+          }
+          targetSessionId = searchParams.get('sessionId');
+          qrToken = searchParams.get('token');
+        } catch (e) {
+          const matchId = decodedText.match(/sessionId=([^&]+)/);
+          const matchToken = decodedText.match(/token=([^&]+)/);
+          if (matchId) targetSessionId = decodeURIComponent(matchId[1]);
+          if (matchToken) qrToken = decodeURIComponent(matchToken[1]);
         }
+      } else if (decodedText.startsWith('{') && decodedText.endsWith('}')) {
+        // Parse JSON structure if formatted
+        const parsed = JSON.parse(decodedText);
+        targetSessionId = parsed.sessionId;
+        qrToken = parsed.token || parsed.signature;
       } else if (decodedText.includes('session_')) {
         // Plain text session id or custom string
         const match = decodedText.match(/(session_[a-zA-Z0-9_]+)/);
@@ -190,22 +198,37 @@ class AttendanceEngine {
         throw new Error('Please sign in as a student before scanning.');
       }
 
-      // Verify active Firebase Auth identity in live mode
-      if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase') {
-        const fbUser = window.firebaseManager.auth ? window.firebaseManager.auth.currentUser : null;
-        if (!fbUser) {
-          throw new Error('You must have an active Firebase Authentication session to record attendance. Please sign in again.');
-        }
-        if (fbUser.uid !== student.uid) {
-          throw new Error('Authentication session mismatch: Current session does not match authenticated Firebase user.');
-        }
-      }
+      // Check for Bearer token for serverless API verification
+      const accessToken = window.authService.getAccessToken();
+      let result;
 
-      const result = await window.dbService.recordAttendanceSubmission({
-        sessionId: targetSessionId,
-        studentUid: student.uid,
-        verificationMethod: 'qr_scan'
-      });
+      if (accessToken) {
+        const resp = await fetch('/api/attendance/record', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({
+            sessionId: targetSessionId,
+            qrToken: qrToken,
+            verificationMethod: 'qr_scan'
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.error || 'Attendance submission rejected.');
+        }
+        result = data.attendance || data;
+      } else {
+        result = await window.dbService.recordAttendanceSubmission({
+          sessionId: targetSessionId,
+          studentUid: student.uid,
+          verificationMethod: 'qr_scan',
+          qrToken: qrToken
+        });
+      }
 
       if (onSuccess) onSuccess(result);
     } catch (err) {
@@ -228,17 +251,6 @@ class AttendanceEngine {
       const student = window.authService.currentUser;
       if (!student) throw new Error('Please sign in as a student.');
 
-      // Verify active Firebase Auth identity in live mode
-      if (window.firebaseManager && window.firebaseManager.getMode() === 'firebase') {
-        const fbUser = window.firebaseManager.auth ? window.firebaseManager.auth.currentUser : null;
-        if (!fbUser) {
-          throw new Error('You must have an active Firebase Authentication session to record attendance. Please sign in again.');
-        }
-        if (fbUser.uid !== student.uid) {
-          throw new Error('Authentication session mismatch: Current session does not match authenticated Firebase user.');
-        }
-      }
-
       // Find active or paused session matching manual code
       const allSessions = await window.dbService.getSessions();
       const targetSession = allSessions.find(s => 
@@ -251,11 +263,36 @@ class AttendanceEngine {
         throw new Error(`Invalid or expired lecture code "${cleanCode}". No active lecture session matches this code.`);
       }
 
-      const result = await window.dbService.recordAttendanceSubmission({
-        sessionId: targetSession.id,
-        studentUid: student.uid,
-        verificationMethod: 'manual_code'
-      });
+      const accessToken = window.authService.getAccessToken();
+      let result;
+
+      if (accessToken) {
+        const resp = await fetch('/api/attendance/record', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({
+            sessionId: targetSession.id,
+            manualCode: cleanCode,
+            verificationMethod: 'manual_code'
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.error || 'Attendance submission rejected.');
+        }
+        result = data.attendance || data;
+      } else {
+        result = await window.dbService.recordAttendanceSubmission({
+          sessionId: targetSession.id,
+          studentUid: student.uid,
+          verificationMethod: 'manual_code',
+          manualCode: cleanCode
+        });
+      }
 
       if (onSuccess) onSuccess(result);
       return result;

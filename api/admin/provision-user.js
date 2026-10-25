@@ -78,7 +78,8 @@ export default async function handler(req, res) {
         full_name: fullName.trim(),
         role: role,
         level: cleanLevel,
-        staff_id: cleanStaffId
+        staff_id: cleanStaffId,
+        must_change_password: (password === 'Fudma@2026' || password.toLowerCase() === 'fudma@2026')
       }
     });
 

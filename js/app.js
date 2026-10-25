@@ -39,12 +39,17 @@ class Application {
 
     this.updateEngineBadge();
 
-    // 6. Navigate to initial view based on hash or default
-    const hash = window.location.hash.replace('#', '');
-    if (hash && document.getElementById(`${hash}-view`)) {
-      this.navigate(`${hash}-view`);
+    // 6. Check for incoming mobile QR attendance link in URL hash
+    const fullHash = window.location.hash || '';
+    if (fullHash.includes('attendance')) {
+      this.handleIncomingAttendanceUrl(fullHash);
     } else {
-      this.navigate('landing-view');
+      const hash = fullHash.replace('#', '');
+      if (hash && document.getElementById(`${hash}-view`)) {
+        this.navigate(`${hash}-view`);
+      } else {
+        this.navigate('landing-view');
+      }
     }
 
     console.log('FUDMA E-Attendance System ready.');
@@ -85,6 +90,13 @@ class Application {
         this.showLoginModal();
         return null;
       }
+    }
+
+    // Enforce mandatory password update before accessing protected features
+    if (user && user.mustChangePassword && isProtected) {
+      this.showToast('You must change your temporary password before accessing portal features.', 'warning');
+      this.showChangePasswordModal();
+      return null;
     }
 
     if (viewId === 'admin-view' && (!user || user.role !== 'admin')) {
@@ -312,6 +324,24 @@ class Application {
     try {
       const user = await window.authService.login(email, password);
       this.closeModal();
+
+      if (user.mustChangePassword) {
+        this.showToast('Temporary credentials detected. Please choose a permanent, secure institutional password.', 'warning');
+        this.showChangePasswordModal();
+        return;
+      }
+
+      // Check for pending attendance submission from scanned QR url
+      const pendingAttendanceStr = sessionStorage.getItem('fudma_pending_attendance');
+      if (pendingAttendanceStr && user.role === 'student') {
+        sessionStorage.removeItem('fudma_pending_attendance');
+        try {
+          const pending = JSON.parse(pendingAttendanceStr);
+          this.executePendingAttendance(pending);
+          return;
+        } catch (e) {}
+      }
+
       this.showToast(`Welcome back, ${user.fullName}!`, 'success');
 
       // Direct to respective role view
@@ -328,6 +358,164 @@ class Application {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
       }
+    }
+  }
+
+  showChangePasswordModal() {
+    this.openModal('Mandatory Password Update', `
+      <div style="margin-bottom: 20px;">
+        <div style="background: #fff8e6; border: 1px solid #ffd591; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 16px; font-size: 0.85rem; color: #873800;">
+          🔒 <strong>Security Policy:</strong> You are currently using a temporary onboarding password (e.g. <code>Fudma@2026</code>). You must set a permanent institutional password before accessing portal features.
+        </div>
+        <form id="change-password-form" onsubmit="window.app.handleChangePasswordForm(event)">
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="new-password" class="form-control" placeholder="Enter new strong password" required />
+            <span class="form-help">Must be at least 8 characters, include uppercase, lowercase, number, and special character.</span>
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="confirm-new-password" class="form-control" placeholder="Re-enter new password" required />
+          </div>
+          <div id="change-pass-error-msg" style="color: var(--danger-solid); font-size: 0.82rem; margin-top: 6px; display: none;"></div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 14px;">
+            Update Password & Continue
+          </button>
+        </form>
+      </div>
+    `);
+  }
+
+  async handleChangePasswordForm(e) {
+    e.preventDefault();
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-new-password').value;
+    const errBox = document.getElementById('change-pass-error-msg');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+
+    if (errBox) errBox.style.display = 'none';
+
+    if (newPassword !== confirmPassword) {
+      if (errBox) {
+        errBox.innerText = 'Passwords do not match. Please re-enter.';
+        errBox.style.display = 'block';
+      }
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      if (errBox) {
+        errBox.innerText = 'Password must be at least 8 characters long.';
+        errBox.style.display = 'block';
+      }
+      return;
+    }
+
+    if (newPassword === 'Fudma@2026' || newPassword.toLowerCase() === 'fudma@2026') {
+      if (errBox) {
+        errBox.innerText = 'New password cannot be the temporary default password.';
+        errBox.style.display = 'block';
+      }
+      return;
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ Updating password...';
+    }
+
+    try {
+      await window.authService.changePassword(newPassword);
+      this.closeModal();
+      this.showToast('Password updated successfully! Welcome to your portal.', 'success');
+
+      const user = window.authService.currentUser;
+      if (user) {
+        if (user.role === 'admin') this.navigate('admin-view');
+        else if (user.role === 'lecturer') this.navigate('lecturer-view');
+        else this.navigate('student-view');
+      }
+    } catch (err) {
+      if (errBox) {
+        errBox.innerText = err.message || 'Failed to update password.';
+        errBox.style.display = 'block';
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Update Password & Continue';
+      }
+    }
+  }
+
+  handleIncomingAttendanceUrl(fullHash) {
+    try {
+      let queryString = '';
+      if (fullHash.includes('?')) {
+        queryString = fullHash.split('?')[1];
+      }
+      const params = new URLSearchParams(queryString);
+      const sessionId = params.get('sessionId');
+      const token = params.get('token');
+
+      if (!sessionId) {
+        this.navigate('landing-view');
+        return;
+      }
+
+      const user = window.authService.currentUser;
+      if (!user || user.role !== 'student') {
+        sessionStorage.setItem('fudma_pending_attendance', JSON.stringify({ sessionId, token }));
+        this.showToast('Please sign in with your student credentials to confirm lecture attendance.', 'info');
+        this.showLoginModal('student');
+        return;
+      }
+
+      this.executePendingAttendance({ sessionId, token });
+    } catch (e) {
+      console.warn('Error handling incoming attendance URL:', e);
+      this.navigate('landing-view');
+    }
+  }
+
+  async executePendingAttendance({ sessionId, token }) {
+    this.navigate('student-view');
+    try {
+      this.showToast('Submitting attendance for this lecture session...', 'info');
+      const accessToken = window.authService.getAccessToken();
+      let result;
+
+      if (accessToken) {
+        const resp = await fetch('/api/attendance/record', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({
+            sessionId,
+            qrToken: token,
+            verificationMethod: 'qr_scan'
+          })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.error || 'Attendance submission rejected.');
+        }
+        result = data.attendance || data;
+      } else {
+        result = await window.dbService.recordAttendanceSubmission({
+          sessionId,
+          studentUid: window.authService.currentUser.uid,
+          verificationMethod: 'qr_scan',
+          qrToken: token
+        });
+      }
+
+      this.showToast(result.isLate ? 'Attendance recorded (Late Arrival).' : 'Attendance recorded successfully (Present)!', result.isLate ? 'warning' : 'success');
+      window.studentCtrl?.render();
+    } catch (err) {
+      this.showToast(err.message || 'Could not record attendance.', 'danger');
     }
   }
 
