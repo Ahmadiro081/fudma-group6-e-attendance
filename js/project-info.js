@@ -210,7 +210,7 @@ class ProjectInfoController {
             <div style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: 18px;">
               <h3 style="font-size: 1rem; color: var(--primary-900); margin-bottom: 8px;">5. Atomic Duplicate Prevention</h3>
               <p style="font-size: 0.85rem; color: var(--gray-700); line-height: 1.6;">
-                Duplicate check-ins are strictly barred by utilizing compound document identifiers: <code>${sessionId}_${studentUid}</code>. Any subsequent attempt to record attendance for the same session collides with the existing record and is rejected atomically.
+                Duplicate check-ins are strictly barred by utilizing compound document identifiers: <code>\${sessionId}_\${studentUid}</code>. Any subsequent attempt to record attendance for the same session collides with the existing record and is rejected atomically.
               </p>
             </div>
 

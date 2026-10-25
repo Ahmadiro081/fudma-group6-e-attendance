@@ -198,10 +198,29 @@ export default async function handler(req, res) {
       console.warn('[/api/auth/register audit log exception]:', auditException);
     }
 
-    // 7. Return sanitized response
+    // 7. Obtain active session tokens for the newly registered student
+    let sessionData = null;
+    try {
+      const { data: signInResult } = await supabaseAdmin.auth.signInWithPassword({
+        email: cleanEmail,
+        password: password
+      });
+      if (signInResult?.session) {
+        sessionData = {
+          access_token: signInResult.session.access_token,
+          refresh_token: signInResult.session.refresh_token,
+          expires_in: signInResult.session.expires_in
+        };
+      }
+    } catch (sessionErr) {
+      console.warn('[/api/auth/register auto-signin notice]:', sessionErr);
+    }
+
+    // 8. Return sanitized response with session
     return res.status(201).json({
       success: true,
       message: 'Student registration completed successfully.',
+      session: sessionData,
       user: {
         uid: newUid,
         id: newUid,

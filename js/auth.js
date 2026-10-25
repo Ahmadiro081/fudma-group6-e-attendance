@@ -349,6 +349,12 @@ class AuthService {
 
         if (resp.ok) {
           const body = await resp.json();
+          if (body.session && window.supabaseClient) {
+            await window.supabaseClient.auth.setSession({
+              access_token: body.session.access_token,
+              refresh_token: body.session.refresh_token
+            });
+          }
           const registeredUser = body.user;
           this.currentUser = registeredUser;
           sessionStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(this.currentUser));
