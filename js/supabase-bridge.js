@@ -1,66 +1,124 @@
 /**
- * FUDMA Group 6 E-Attendance System - Supabase Service Bridge
- * Course: GET 411 | Group 6 | Academic Session: 2026/2027
+ * FUDMA Group 6 E-Attendance System
+ * Supabase Service Bridge
+ *
+ * Course: GET 411
+ * Academic Session: 2026/2027
  * Institution: Federal University Dutsin-Ma (FUDMA), Nigeria
- * 
- * Maps frontend controllers to Supabase PostgreSQL schema:
+ *
+ * Maps frontend controllers to the confirmed Supabase schema:
  * 1. profiles
  * 2. courses
  * 3. course_enrollments
  * 4. lecture_sessions
  * 5. attendance_records
  * 6. audit_logs
+ *
+ * IMPORTANT:
+ * This bridge uses the actual database column names.
+ * Secure attendance RPCs must be created and verified separately.
  */
 
 class SupabaseBridge {
   constructor() {}
+
+  // =========================================================
+  // CLIENT HELPERS
+  // =========================================================
 
   getClient() {
     return window.supabaseClient;
   }
 
   isReady() {
-    return !!(window.supabaseClient && typeof window.supabaseClient.from === 'function');
+    const client = this.getClient();
+
+    return !!(
+      client &&
+      typeof client.from === 'function'
+    );
   }
 
-  // --- Profile / User Helpers ---
-  _mapProfileToUser(p) {
-    if (!p) return null;
+  _requireClient() {
+    const client = this.getClient();
+
+    if (!client) {
+      throw new Error(
+        'Supabase client is not initialized.'
+      );
+    }
+
+    return client;
+  }
+
+  _throwDatabaseError(operation, error) {
+    console.error(
+      `[SupabaseBridge] ${operation} failed:`,
+      error
+    );
+
+    throw new Error(
+      error?.message ||
+      `${operation} failed. Please check the Supabase database schema and permissions.`
+    );
+  }
+
+  // =========================================================
+  // PROFILE / USER HELPERS
+  // =========================================================
+
+  _mapProfileToUser(profile) {
+    if (!profile) {
+      return null;
+    }
+
     return {
-      uid: p.id,
-      id: p.id,
-      fullName: p.full_name,
-      email: p.email,
-      role: p.role,
-      department: p.department,
-      status: p.status,
-      matricNumber: p.matric_number || null,
-      level: p.level || '400L',
-      staffId: p.staff_id || null,
-      createdAt: p.created_at,
-      updatedAt: p.updated_at
+      uid: profile.id,
+      id: profile.id,
+      fullName: profile.full_name,
+      email: profile.email,
+      role: profile.role,
+      department: profile.department,
+      status: profile.status,
+      matricNumber: profile.matric_number || null,
+      level: profile.level || '400L',
+      staffId: profile.staff_id || null,
+      createdAt: profile.created_at,
+      updatedAt: profile.updated_at
     };
   }
 
   async getUsers(role = null) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+    const client = this._requireClient();
 
-    let query = client.from('profiles').select('*');
+    let query = client
+      .from('profiles')
+      .select('*');
+
     if (role) {
       query = query.eq('role', role);
     }
+
     const { data, error } = await query;
+
     if (error) {
-      console.error('[SupabaseBridge] getUsers error:', error);
-      throw error;
+      this._throwDatabaseError(
+        'getUsers',
+        error
+      );
     }
-    return (data || []).map(p => this._mapProfileToUser(p));
+
+    return (data || []).map(profile =>
+      this._mapProfileToUser(profile)
+    );
   }
 
   async getUserById(uid) {
     const client = this.getClient();
-    if (!client || !uid) return null;
+
+    if (!client || !uid) {
+      return null;
+    }
 
     const { data, error } = await client
       .from('profiles')
@@ -69,436 +127,854 @@ class SupabaseBridge {
       .maybeSingle();
 
     if (error) {
-      console.warn('[SupabaseBridge] getUserById warning:', error.message);
-      return null;
+      this._throwDatabaseError(
+        'getUserById',
+        error
+      );
     }
+
     return this._mapProfileToUser(data);
   }
 
   async getUserByEmail(email) {
     const client = this.getClient();
-    if (!client || !email) return null;
+
+    if (!client || !email) {
+      return null;
+    }
+
+    const normalizedEmail = email
+      .trim()
+      .toLowerCase();
 
     const { data, error } = await client
       .from('profiles')
       .select('*')
-      .eq('email', email.trim().toLowerCase())
+      .ilike('email', normalizedEmail)
       .maybeSingle();
 
     if (error) {
-      console.warn('[SupabaseBridge] getUserByEmail warning:', error.message);
-      return null;
+      this._throwDatabaseError(
+        'getUserByEmail',
+        error
+      );
     }
+
     return this._mapProfileToUser(data);
   }
 
-  async getUserByMatricNumber(matric) {
+  async getUserByMatricNumber(matricNumber) {
     const client = this.getClient();
-    if (!client || !matric) return null;
 
-    const cleanMatric = matric.trim().toUpperCase().replace(/\s+/g, '');
+    if (!client || !matricNumber) {
+      return null;
+    }
+
+    const normalizedMatric = matricNumber
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, '');
+
     const { data, error } = await client
       .from('profiles')
       .select('*')
-      .eq('matric_number', cleanMatric)
+      .ilike(
+        'matric_number',
+        normalizedMatric
+      )
       .maybeSingle();
 
     if (error) {
-      console.warn('[SupabaseBridge] getUserByMatricNumber warning:', error.message);
-      return null;
+      this._throwDatabaseError(
+        'getUserByMatricNumber',
+        error
+      );
     }
+
     return this._mapProfileToUser(data);
   }
 
   async saveUser(userData) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+    const client = this._requireClient();
+
+    if (!userData) {
+      throw new Error(
+        'User information is required.'
+      );
+    }
 
     const uid = userData.uid || userData.id;
+
     const profilePayload = {
       full_name: userData.fullName,
-      email: (userData.email || '').toLowerCase().trim(),
+      email: (userData.email || '')
+        .trim()
+        .toLowerCase(),
       role: userData.role || 'student',
-      department: userData.department || 'Faculty of Engineering',
+      department:
+        userData.department ||
+        'Faculty of Engineering',
       status: userData.status || 'active',
-      matric_number: userData.matricNumber ? userData.matricNumber.trim().toUpperCase() : null,
-      staff_id: userData.staffId ? userData.staffId.trim().toUpperCase() : null,
+      matric_number: userData.matricNumber
+        ? userData.matricNumber
+            .trim()
+            .toUpperCase()
+        : null,
+      staff_id: userData.staffId
+        ? userData.staffId
+            .trim()
+            .toUpperCase()
+        : null,
+      level: userData.level || '400L',
       updated_at: new Date().toISOString()
     };
-
-    const cleanLevel = userData.level || '400L';
 
     if (uid) {
       profilePayload.id = uid;
     }
 
-    let { data, error } = await client
+    const { data, error } = await client
       .from('profiles')
-      .upsert({ ...profilePayload, level: cleanLevel })
+      .upsert(profilePayload)
       .select()
       .single();
 
-    const isMissingLevelColumn = error && typeof error.message === 'string' && (
-      (error.message.includes("'level' column") && error.message.includes('schema cache')) ||
-      (error.message.includes('level') && error.message.includes('profiles') && error.message.includes('schema cache')) ||
-      error.message.toLowerCase().includes("could not find the 'level' column")
-    );
-
-    if (isMissingLevelColumn) {
-      const retryResult = await client
-        .from('profiles')
-        .upsert(profilePayload)
-        .select()
-        .single();
-      data = retryResult.data;
-      error = retryResult.error;
-    }
-
     if (error) {
-      console.error('[SupabaseBridge] saveUser error:', error);
-      throw error;
+      this._throwDatabaseError(
+        'saveUser',
+        error
+      );
     }
+
     return this._mapProfileToUser(data);
   }
 
-  // --- Course Helpers ---
-  _mapCourse(c, enrollments = []) {
-    if (!c) return null;
+  // =========================================================
+  // COURSE HELPERS
+  // =========================================================
+
+  _mapCourse(course, enrolledStudentIds = []) {
+    if (!course) {
+      return null;
+    }
+
     return {
-      id: c.id,
-      courseCode: c.course_code,
-      courseTitle: c.course_title,
-      creditUnits: c.credit_units,
-      department: c.department,
-      academicSession: c.academic_session,
-      semester: c.semester,
-      lecturerUid: c.lecturer_uid || c.lecturer_id,
-      enrolledStudentIds: enrollments,
-      createdAt: c.created_at,
-      updatedAt: c.updated_at
+      id: course.id,
+      courseCode: course.course_code,
+      courseTitle: course.course_title,
+
+      // These fields are not present in the confirmed schema.
+      creditUnits: course.credit_units ?? null,
+      department: course.department ?? null,
+
+      academicSession: course.academic_session,
+      semester: course.semester,
+
+      lecturerUid: course.lecturer_uid || null,
+
+      enrolledStudentIds,
+
+      createdAt: course.created_at,
+      updatedAt: course.updated_at
     };
   }
 
   async getCourses(lecturerId = null) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+    const client = this._requireClient();
 
-    let query = client.from('courses').select('*, course_enrollments(student_id)');
+    let query = client
+      .from('courses')
+      .select(`
+        *,
+        course_enrollments (
+          student_uid
+        )
+      `);
+
     if (lecturerId) {
-      query = query.or(`lecturer_id.eq.${lecturerId},lecturer_uid.eq.${lecturerId}`);
-    }
-    const { data, error } = await query;
-    if (error) {
-      console.error('[SupabaseBridge] getCourses error:', error);
-      throw error;
+      query = query.eq(
+        'lecturer_uid',
+        lecturerId
+      );
     }
 
-    return (data || []).map(c => {
-      const enrolled = (c.course_enrollments || []).map(e => e.student_id);
-      return this._mapCourse(c, enrolled);
+    const { data, error } = await query;
+
+    if (error) {
+      this._throwDatabaseError(
+        'getCourses',
+        error
+      );
+    }
+
+    return (data || []).map(course => {
+      const enrolledStudentIds = (
+        course.course_enrollments || []
+      ).map(enrollment =>
+        enrollment.student_uid
+      );
+
+      return this._mapCourse(
+        course,
+        enrolledStudentIds
+      );
     });
   }
 
   async getCourseById(courseId) {
     const client = this.getClient();
-    if (!client || !courseId) return null;
+
+    if (!client || !courseId) {
+      return null;
+    }
 
     const { data, error } = await client
       .from('courses')
-      .select('*, course_enrollments(student_id)')
+      .select(`
+        *,
+        course_enrollments (
+          student_uid
+        )
+      `)
       .eq('id', courseId)
       .maybeSingle();
 
     if (error) {
-      console.warn('[SupabaseBridge] getCourseById warning:', error.message);
+      this._throwDatabaseError(
+        'getCourseById',
+        error
+      );
+    }
+
+    if (!data) {
       return null;
     }
-    const enrolled = (data?.course_enrollments || []).map(e => e.student_id);
-    return this._mapCourse(data, enrolled);
+
+    const enrolledStudentIds = (
+      data.course_enrollments || []
+    ).map(enrollment =>
+      enrollment.student_uid
+    );
+
+    return this._mapCourse(
+      data,
+      enrolledStudentIds
+    );
   }
 
   async saveCourse(courseData) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+    const client = this._requireClient();
 
-    const courseId = courseData.id || 'course_' + courseData.courseCode.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!courseData) {
+      throw new Error(
+        'Course information is required.'
+      );
+    }
+
     const coursePayload = {
-      id: courseId,
-      course_code: courseData.courseCode.trim().toUpperCase(),
-      course_title: courseData.courseTitle.trim(),
-      credit_units: Number(courseData.creditUnits) || 2,
-      department: courseData.department || 'Faculty of Engineering',
-      academic_session: courseData.academicSession || '2026/2027',
-      semester: courseData.semester || 'First Semester',
-      lecturer_id: courseData.lecturerUid || null,
-      updated_at: new Date().toISOString()
+      course_code: (
+        courseData.courseCode || ''
+      ).trim().toUpperCase(),
+
+      course_title: (
+        courseData.courseTitle || ''
+      ).trim(),
+
+      lecturer_uid:
+        courseData.lecturerUid || null,
+
+      academic_session:
+        courseData.academicSession ||
+        '2026/2027',
+
+      semester:
+        courseData.semester ||
+        'First Semester'
     };
 
-    const { data, error } = await client
-      .from('courses')
-      .upsert(coursePayload)
+    if (
+      !coursePayload.course_code ||
+      !coursePayload.course_title
+    ) {
+      throw new Error(
+        'Course code and course title are required.'
+      );
+    }
+
+    // Only use an existing database UUID when supplied.
+    if (courseData.id) {
+      coursePayload.id = courseData.id;
+    }
+
+    let query;
+
+    if (courseData.id) {
+      query = client
+        .from('courses')
+        .update(coursePayload)
+        .eq('id', courseData.id);
+    } else {
+      query = client
+        .from('courses')
+        .insert(coursePayload);
+    }
+
+    const { data, error } = await query
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      this._throwDatabaseError(
+        'saveCourse',
+        error
+      );
+    }
 
-    // Handle course enrollments if provided
-    if (Array.isArray(courseData.enrolledStudentIds)) {
-      const enrollRows = courseData.enrolledStudentIds.map(stId => ({
-        course_id: courseId,
-        student_id: stId
-      }));
-      if (enrollRows.length > 0) {
-        await client.from('course_enrollments').upsert(enrollRows, { onConflict: 'course_id,student_id' });
+    const courseId = data.id;
+
+    // Enrollment uses the actual student_uid column.
+    if (
+      Array.isArray(
+        courseData.enrolledStudentIds
+      )
+    ) {
+      const studentIds =
+        courseData.enrolledStudentIds;
+
+      if (studentIds.length > 0) {
+        const enrollmentRows = studentIds.map(
+          studentUid => ({
+            course_id: courseId,
+            student_uid: studentUid
+          })
+        );
+
+        const { error: enrollmentError } =
+          await client
+            .from('course_enrollments')
+            .upsert(enrollmentRows, {
+              onConflict:
+                'course_id,student_uid'
+            });
+
+        if (enrollmentError) {
+          this._throwDatabaseError(
+            'saveCourse enrollments',
+            enrollmentError
+          );
+        }
       }
     }
 
     return this.getCourseById(courseId);
   }
 
-  // --- Lecture Sessions Helpers ---
-  _mapSession(s) {
-    if (!s) return null;
+  // =========================================================
+  // LECTURE SESSION HELPERS
+  // =========================================================
+
+  _mapSession(session) {
+    if (!session) {
+      return null;
+    }
+
     return {
-      id: s.id,
-      courseId: s.course_id,
-      courseCode: s.course_code,
-      courseTitle: s.course_title,
-      lecturerUid: s.lecturer_id,
-      lecturerName: s.lecturer_name,
-      venue: s.venue,
-      date: s.session_date,
-      startTime: s.start_time,
-      lateThreshold: s.late_threshold,
-      closeTime: s.close_time,
-      allowManualCode: s.allow_manual_code,
-      manualCode: s.manual_code || (s.session_secrets ? s.session_secrets.manual_code : null),
-      qrToken: s.qr_token || null,
-      status: s.status,
-      finalizedAt: s.finalized_at,
-      finalizedByUid: s.finalized_by,
-      finalizedByName: s.finalized_by_name,
-      createdAt: s.created_at,
-      updatedAt: s.updated_at
+      id: session.id,
+
+      courseId: session.course_id,
+
+      // Course details are obtained from the courses table
+      // when needed; they are not stored in lecture_sessions.
+      courseCode: session.course_code || null,
+      courseTitle: session.course_title || null,
+
+      lecturerUid: session.lecturer_uid,
+
+      lecturerName: session.lecturer_name || null,
+
+      venue: session.venue || null,
+
+      date: session.session_date,
+
+      startTime: session.start_time,
+
+      closeTime: session.closing_time,
+
+      // This field is not present in the confirmed schema.
+      lateThreshold:
+        session.late_threshold ?? null,
+
+      allowManualCode:
+        session.allow_manual_code ?? false,
+
+      // The database stores only a QR token hash.
+      // Never treat a hash as the original QR token.
+      qrToken: null,
+
+      qrTokenHash:
+        session.qr_token_hash || null,
+
+      status: session.status,
+
+      createdAt: session.created_at,
+
+      updatedAt: session.updated_at
     };
   }
 
-  async getSessions(filterCourseId = null, filterLecturerId = null) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+  async getSessions(
+    filterCourseId = null,
+    filterLecturerId = null
+  ) {
+    const client = this._requireClient();
 
     let query = client
       .from('lecture_sessions')
-      .select('*, session_secrets(manual_code)')
-      .order('created_at', { ascending: false });
+      .select('*')
+      .order('created_at', {
+        ascending: false
+      });
 
-    if (filterCourseId) query = query.eq('course_id', filterCourseId);
-    if (filterLecturerId) query = query.eq('lecturer_id', filterLecturerId);
+    if (filterCourseId) {
+      query = query.eq(
+        'course_id',
+        filterCourseId
+      );
+    }
+
+    if (filterLecturerId) {
+      query = query.eq(
+        'lecturer_uid',
+        filterLecturerId
+      );
+    }
 
     const { data, error } = await query;
+
     if (error) {
-      console.error('[SupabaseBridge] getSessions error:', error);
-      throw error;
+      this._throwDatabaseError(
+        'getSessions',
+        error
+      );
     }
-    return (data || []).map(s => this._mapSession(s));
+
+    return (data || []).map(session =>
+      this._mapSession(session)
+    );
   }
 
   async getSessionById(sessionId) {
     const client = this.getClient();
-    if (!client || !sessionId) return null;
+
+    if (!client || !sessionId) {
+      return null;
+    }
 
     const { data, error } = await client
       .from('lecture_sessions')
-      .select('*, session_secrets(manual_code)')
+      .select('*')
       .eq('id', sessionId)
       .maybeSingle();
 
     if (error) {
-      console.warn('[SupabaseBridge] getSessionById warning:', error.message);
-      return null;
+      this._throwDatabaseError(
+        'getSessionById',
+        error
+      );
     }
+
     return this._mapSession(data);
   }
 
   async saveSession(sessionData) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+    const client = this._requireClient();
 
-    const sessionId = sessionData.id || 'session_' + Date.now();
+    if (!sessionData) {
+      throw new Error(
+        'Lecture session information is required.'
+      );
+    }
+
+    if (
+      !sessionData.courseId ||
+      !sessionData.lecturerUid
+    ) {
+      throw new Error(
+        'A valid course ID and lecturer ID are required.'
+      );
+    }
+
+    /*
+     * Only fields confirmed in lecture_sessions are written.
+     *
+     * The frontend must provide a valid UUID for id when
+     * updating an existing session. For new sessions, let
+     * PostgreSQL generate the UUID.
+     */
+
     const sessionPayload = {
-      id: sessionId,
       course_id: sessionData.courseId,
-      course_code: sessionData.courseCode,
-      course_title: sessionData.courseTitle,
-      lecturer_id: sessionData.lecturerUid,
-      lecturer_name: sessionData.lecturerName,
-      venue: sessionData.venue,
-      session_date: sessionData.date || new Date().toISOString().split('T')[0],
+
+      lecturer_uid: sessionData.lecturerUid,
+
+      session_title:
+        sessionData.sessionTitle ||
+        'GET 411 Lecture',
+
+      session_date:
+        sessionData.date ||
+        new Date().toISOString().slice(0, 10),
+
       start_time: sessionData.startTime,
-      late_threshold: sessionData.lateThreshold,
-      close_time: sessionData.closeTime,
-      allow_manual_code: sessionData.allowManualCode !== false,
-      qr_token: sessionData.qrToken || 'fudma-token-' + sessionId,
-      status: sessionData.status || 'active',
-      updated_at: new Date().toISOString()
+
+      end_time:
+        sessionData.endTime ||
+        sessionData.closeTime ||
+        null,
+
+      closing_time:
+        sessionData.closingTime ||
+        sessionData.closeTime ||
+        sessionData.endTime ||
+        null,
+
+      status: sessionData.status || 'active'
     };
 
-    const { data, error } = await client
-      .from('lecture_sessions')
-      .upsert(sessionPayload)
+    if (
+      sessionData.qrTokenHash ||
+      sessionData.qr_token_hash
+    ) {
+      sessionPayload.qr_token_hash =
+        sessionData.qrTokenHash ||
+        sessionData.qr_token_hash;
+    }
+
+    let query;
+
+    if (sessionData.id) {
+      query = client
+        .from('lecture_sessions')
+        .update(sessionPayload)
+        .eq('id', sessionData.id);
+    } else {
+      query = client
+        .from('lecture_sessions')
+        .insert(sessionPayload);
+    }
+
+    const { data, error } = await query
       .select()
       .single();
 
-    if (error) throw error;
-
-    // Save manual code securely into session_secrets if provided
-    if (sessionData.manualCode) {
-      await client
-        .from('session_secrets')
-        .upsert({
-          session_id: sessionId,
-          manual_code: sessionData.manualCode.trim().toUpperCase()
-        }, { onConflict: 'session_id' });
+    if (error) {
+      this._throwDatabaseError(
+        'saveSession',
+        error
+      );
     }
 
-    return this.getSessionById(sessionId);
+    return this._mapSession(data);
   }
 
-  async updateSessionStatus(sessionId, newStatus) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+  async updateSessionStatus(
+    sessionId,
+    newStatus
+  ) {
+    const client = this._requireClient();
 
-    // Execute state transition via RPC
-    const { data, error } = await client.rpc('update_session_state', {
-      p_session_id: sessionId,
-      p_new_status: newStatus
-    });
+    if (!sessionId || !newStatus) {
+      throw new Error(
+        'Session ID and new status are required.'
+      );
+    }
 
-    if (error) throw error;
-    return this.getSessionById(sessionId);
+    /*
+     * This is a basic database update, not a secure
+     * state-transition mechanism.
+     *
+     * Production deployments should validate who is
+     * allowed to change the status through RLS or a
+     * server-side function.
+     */
+
+    const { data, error } = await client
+      .from('lecture_sessions')
+      .update({
+        status: newStatus
+      })
+      .eq('id', sessionId)
+      .select()
+      .single();
+
+    if (error) {
+      this._throwDatabaseError(
+        'updateSessionStatus',
+        error
+      );
+    }
+
+    return this._mapSession(data);
   }
 
-  // --- Attendance Helpers ---
-  _mapAttendanceRecord(a) {
-    if (!a) return null;
+  // =========================================================
+  // ATTENDANCE HELPERS
+  // =========================================================
+
+  _mapAttendanceRecord(record) {
+    if (!record) {
+      return null;
+    }
+
     return {
-      id: a.id,
-      lectureSessionId: a.session_id,
-      studentUid: a.student_id,
-      studentName: a.student_name,
-      matricNumber: a.matric_number,
-      courseId: a.course_id,
-      courseCode: a.course_code,
-      courseTitle: a.course_title,
-      checkInTime: a.check_in_time,
-      timestamp: a.recorded_at,
-      status: a.status,
-      isLate: a.is_late,
-      verificationMethod: a.verification_method
+      id: record.id,
+
+      lectureSessionId:
+        record.lecture_session_id,
+
+      studentUid:
+        record.student_uid,
+
+      attendanceStatus:
+        record.attendance_status,
+
+      status:
+        record.attendance_status,
+
+      verificationMethod:
+        record.verification_method,
+
+      checkInTime:
+        record.checked_in_at,
+
+      timestamp:
+        record.created_at,
+
+      notes:
+        record.notes || null
     };
   }
 
-  async getAttendance(filterSessionId = null, filterStudentId = null) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+  async getAttendance(
+    filterSessionId = null,
+    filterStudentId = null
+  ) {
+    const client = this._requireClient();
 
     let query = client
       .from('attendance_records')
       .select('*')
-      .order('recorded_at', { ascending: false });
+      .order('created_at', {
+        ascending: false
+      });
 
-    if (filterSessionId) query = query.eq('session_id', filterSessionId);
-    if (filterStudentId) query = query.eq('student_id', filterStudentId);
+    if (filterSessionId) {
+      query = query.eq(
+        'lecture_session_id',
+        filterSessionId
+      );
+    }
+
+    if (filterStudentId) {
+      query = query.eq(
+        'student_uid',
+        filterStudentId
+      );
+    }
 
     const { data, error } = await query;
+
     if (error) {
-      console.error('[SupabaseBridge] getAttendance error:', error);
-      throw error;
+      this._throwDatabaseError(
+        'getAttendance',
+        error
+      );
     }
-    return (data || []).map(a => this._mapAttendanceRecord(a));
+
+    return (data || []).map(record =>
+      this._mapAttendanceRecord(record)
+    );
   }
 
-  async recordAttendanceSubmission({ sessionId, verificationMethod = 'qr_scan', manualCode = null, qrToken = null }) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+  async recordAttendanceSubmission({
+    sessionId,
+    verificationMethod = 'qr_scan',
+    manualCode = null,
+    qrToken = null
+  }) {
+    const client = this._requireClient();
 
-    const { data, error } = await client.rpc('record_attendance_secure', {
-      p_session_id: sessionId,
-      p_verification_method: verificationMethod,
-      p_manual_code: manualCode ? manualCode.trim().toUpperCase() : null,
-      p_qr_token: qrToken ? qrToken.trim() : null
-    });
+    /*
+     * Attendance must be verified securely on the server.
+     * The actual database schema alone does not establish
+     * whether the original RPC exists or is safe.
+     *
+     * Do not replace this with an unrestricted browser
+     * insert, because students could falsify attendance.
+     */
+
+    const { data, error } = await client.rpc(
+      'record_attendance_secure',
+      {
+        p_session_id: sessionId,
+        p_verification_method:
+          verificationMethod,
+        p_manual_code: manualCode
+          ? manualCode.trim().toUpperCase()
+          : null,
+        p_qr_token: qrToken
+          ? qrToken.trim()
+          : null
+      }
+    );
 
     if (error) {
-      console.error('[SupabaseBridge] record_attendance_secure rejected:', error);
-      throw new Error(error.message || 'Official attendance submission failed.');
+      this._throwDatabaseError(
+        'recordAttendanceSubmission',
+        error
+      );
     }
 
     return data;
   }
 
   async finalizeSession(sessionId) {
-    const client = this.getClient();
-    if (!client) throw new Error('Supabase client not initialized.');
+    const client = this._requireClient();
 
-    const { data, error } = await client.rpc('finalize_session_secure', {
-      p_session_id: sessionId
-    });
+    /*
+     * This operation depends on a secure PostgreSQL
+     * function named finalize_session_secure.
+     */
+
+    const { data, error } = await client.rpc(
+      'finalize_session_secure',
+      {
+        p_session_id: sessionId
+      }
+    );
 
     if (error) {
-      console.error('[SupabaseBridge] finalize_session_secure error:', error);
-      throw new Error(error.message || 'Failed to finalize session.');
+      this._throwDatabaseError(
+        'finalizeSession',
+        error
+      );
     }
 
     return data;
   }
 
-  // --- Audit Logs ---
+  // =========================================================
+  // AUDIT LOG HELPERS
+  // =========================================================
+
   async getAuditLogs(limit = 100) {
     const client = this.getClient();
-    if (!client) return [];
+
+    if (!client) {
+      return [];
+    }
+
+    const safeLimit = Math.min(
+      Math.max(Number(limit) || 100, 1),
+      500
+    );
 
     const { data, error } = await client
       .from('audit_logs')
       .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+      .order('created_at', {
+        ascending: false
+      })
+      .limit(safeLimit);
 
     if (error) {
-      console.warn('[SupabaseBridge] getAuditLogs notice:', error.message);
-      return [];
+      this._throwDatabaseError(
+        'getAuditLogs',
+        error
+      );
     }
 
-    return (data || []).map(l => ({
-      id: l.id,
-      eventType: l.event_type,
-      actorUid: l.actor_id,
-      actorName: l.actor_name,
-      targetId: l.target_id,
-      metadata: l.metadata,
-      timestamp: l.created_at
+    return (data || []).map(log => ({
+      id: log.id,
+
+      eventType: log.event_type,
+
+      actorUid: log.actor_uid,
+
+      targetId: log.target_id,
+
+      metadata: log.metadata,
+
+      timestamp: log.created_at
     }));
   }
 
   async addAuditLog(log) {
     const client = this.getClient();
-    if (!client) return null;
+
+    if (!client || !log) {
+      return null;
+    }
+
     try {
-      const { data, error } = await client.from('audit_logs').insert({
-        event_type: log.eventType,
-        actor_id: (log.actorUid && log.actorUid.startsWith('student_') || log.actorUid && log.actorUid.startsWith('usr_')) ? null : (log.actorUid || null),
-        actor_name: log.actorName || 'System',
-        target_id: log.targetId || null,
-        metadata: log.metadata || ''
-      }).select().maybeSingle();
-      if (error) console.warn('[SupabaseBridge] addAuditLog warning:', error.message);
+      const actorUid =
+        log.actorUid &&
+        !String(log.actorUid).startsWith(
+          'student_'
+        ) &&
+        !String(log.actorUid).startsWith(
+          'usr_'
+        )
+          ? log.actorUid
+          : null;
+
+      const payload = {
+        event_type:
+          log.eventType || 'system_event',
+
+        actor_uid: actorUid,
+
+        target_id:
+          log.targetId != null
+            ? String(log.targetId)
+            : null,
+
+        metadata:
+          log.metadata &&
+          typeof log.metadata === 'object'
+            ? log.metadata
+            : {}
+      };
+
+      const { data, error } = await client
+        .from('audit_logs')
+        .insert(payload)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.warn(
+          '[SupabaseBridge] addAuditLog warning:',
+          error.message
+        );
+
+        return null;
+      }
+
       return data;
-    } catch (e) {
-      console.warn('[SupabaseBridge] addAuditLog exception:', e);
+    } catch (error) {
+      console.warn(
+        '[SupabaseBridge] addAuditLog exception:',
+        error
+      );
+
       return null;
     }
   }
 }
 
-const supabaseBridge = new SupabaseBridge();
-window.supabaseBridge = supabaseBridge;
+// ===========================================================
+// REGISTER GLOBAL SERVICE
+// ===========================================================
+
+window.supabaseBridge = new SupabaseBridge();
