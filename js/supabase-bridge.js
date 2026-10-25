@@ -138,7 +138,7 @@ class SupabaseBridge {
       .select()
       .single();
 
-    if (error && (error.message.includes("'level' column") || error.message.includes('level'))) {
+    if (error && (error.message.includes("'level' column") || (error.message.includes('level') && error.message.includes('schema cache')))) {
       const retryResult = await client
         .from('profiles')
         .upsert(profilePayload)

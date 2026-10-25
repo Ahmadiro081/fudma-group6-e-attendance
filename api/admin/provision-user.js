@@ -105,7 +105,7 @@ export default async function handler(req, res) {
       .from('profiles')
       .upsert({ ...profilePayload, level: cleanLevel });
 
-    if (saveErr && (saveErr.message.includes("'level' column") || saveErr.message.includes('level'))) {
+    if (saveErr && (saveErr.message.includes("'level' column") || (saveErr.message.includes('level') && saveErr.message.includes('schema cache')))) {
       console.warn('[/api/admin/provision-user]: "level" column not present in public.profiles. Retrying without level column.');
       const retryResult = await supabaseAdmin
         .from('profiles')
