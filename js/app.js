@@ -219,8 +219,8 @@ class Application {
           </div>
           <div class="form-group">
             <label>Password</label>
-            <input type="password" id="login-password" class="form-control" placeholder="Default: Fudma@2026" required />
-            <span class="form-help">Default student password: <strong>Fudma@2026</strong></span>
+            <input type="password" id="login-password" class="form-control" placeholder="Enter your password" required />
+            <span class="form-help">Enter your assigned institutional password.</span>
           </div>
           <div id="login-error-msg" style="color: var(--danger-solid); font-size: 0.82rem; margin-top: 6px; display: none;"></div>
           
@@ -273,7 +273,7 @@ class Application {
           </div>
         ` : `
           <div style="margin-top: 20px; padding: 12px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-md); font-size: 0.8rem; color: var(--gray-600);">
-            🔒 <strong>Live Firebase Cloud Mode:</strong> Demo quick-switching is disabled to ensure authentication and audit integrity. To evaluate with instant demo accounts without entering credentials, switch to <em>Local Presentation Engine</em> in database settings.
+            🔒 <strong>${isSupabase ? 'Live Supabase Cloud Mode' : 'Live Firebase Cloud Mode'}:</strong> Authenticating directly against cloud PostgreSQL database. Demo quick-switching is reserved for <em>Local Presentation Engine</em> in database settings.
           </div>
         `}
       </div>
@@ -405,71 +405,66 @@ class Application {
   }
 
   // --- Firebase Config Modal ---
+  // --- Database & Engine Configuration Modal ---
   openFirebaseConfigModal() {
     const mgr = window.firebaseManager;
-    const config = mgr.config;
-    const currentMode = mgr.getMode();
-    const initError = mgr.initError;
+    const fbConfig = mgr ? mgr.config : {};
+    const currentMode = localStorage.getItem('fudma_engine_mode_v1') || 'supabase';
+    const currentSbUrl = localStorage.getItem('fudma_supabase_url') || (window.__ENV__?.VITE_SUPABASE_URL) || 'https://mkhzvzgluddaqaxilgkz.supabase.co';
+    const currentSbKey = localStorage.getItem('fudma_supabase_publishable_key') || (window.__ENV__?.VITE_SUPABASE_PUBLISHABLE_KEY) || '';
 
-    this.openModal('Database Engine & Firebase Configuration', `
+    this.openModal('Database Engine & Cloud Backend Configuration', `
       <div>
         <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 14px;">
-          This application features a dual-engine architecture: use the <strong>High-Fidelity Presentation Engine</strong> for offline classroom defense, or connect your live <strong>Google Firebase Project</strong> for cloud synchronization.
+          FUDMA Group 6 E-Attendance System supports <strong>Live Supabase Cloud (PostgreSQL)</strong>, an offline <strong>Local Presentation Engine</strong> for classroom defense, and <strong>Google Firebase</strong> for legacy recovery.
         </p>
 
-        ${initError ? `
-          <div style="background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger-text); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 16px;">
-            <strong>⚠️ Firebase Initialization Notice:</strong><br />
-            ${initError.message || 'Unknown configuration error occurred.'}
-          </div>
-        ` : ''}
-
-        <form id="firebase-config-form" onsubmit="window.app.handleSaveFirebaseConfig(event)">
+        <form id="engine-config-form" onsubmit="window.app.handleSaveDatabaseConfig(event)">
           <div class="form-group">
             <label>Operating Engine Mode</label>
-            <select id="cfg-mode" class="form-control">
-              <option value="firebase" ${currentMode === 'firebase' ? 'selected' : ''}>Live Google Firebase Cloud (Auth, Firestore & Functions)</option>
-              <option value="mock" ${currentMode === 'mock' ? 'selected' : ''}>Local Presentation Engine (Offline Simulation / Demo Roster)</option>
+            <select id="cfg-mode" class="form-control" onchange="window.app.toggleConfigFields(this.value)">
+              <option value="supabase" ${currentMode === 'supabase' ? 'selected' : ''}>⚡ Live Supabase Cloud (PostgreSQL & Auth) - Active</option>
+              <option value="mock" ${currentMode === 'mock' ? 'selected' : ''}>🛡️ Local Presentation Engine (Offline Simulation & Demo Roster)</option>
+              <option value="firebase" ${currentMode === 'firebase' ? 'selected' : ''}>☁️ Google Firebase (Legacy Recovery)</option>
             </select>
           </div>
 
-          <div class="form-grid">
+          <!-- Supabase Configuration Section -->
+          <div id="cfg-section-supabase" style="display: ${currentMode === 'supabase' ? 'block' : 'none'};">
             <div class="form-group">
-              <label>API Key</label>
-              <input type="text" id="cfg-apiKey" class="form-control" value="${config.apiKey || ''}" placeholder="AIzaSy..." />
+              <label>Supabase Project URL</label>
+              <input type="text" id="cfg-sbUrl" class="form-control" value="${currentSbUrl}" placeholder="https://mkhzvzgluddaqaxilgkz.supabase.co" />
+              <span class="form-help">Default endpoint: <code>https://mkhzvzgluddaqaxilgkz.supabase.co</code></span>
             </div>
             <div class="form-group">
-              <label>Project ID</label>
-              <input type="text" id="cfg-projectId" class="form-control" value="${config.projectId || ''}" placeholder="fudma-eattendance-xxxx" />
-            </div>
-          </div>
-
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Auth Domain</label>
-              <input type="text" id="cfg-authDomain" class="form-control" value="${config.authDomain || ''}" placeholder="fudma-xxxx.firebaseapp.com" />
-            </div>
-            <div class="form-group">
-              <label>App ID</label>
-              <input type="text" id="cfg-appId" class="form-control" value="${config.appId || ''}" placeholder="1:xxxx:web:xxxx" />
+              <label>Supabase Publishable / Anon Key</label>
+              <input type="text" id="cfg-sbKey" class="form-control" value="${currentSbKey}" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+              <span class="form-help">Public client key. Never paste the secret service-role key in the browser.</span>
             </div>
           </div>
 
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Storage Bucket (Optional)</label>
-              <input type="text" id="cfg-storageBucket" class="form-control" value="${config.storageBucket || ''}" placeholder="fudma-xxxx.appspot.com" />
+          <!-- Firebase Configuration Section -->
+          <div id="cfg-section-firebase" style="display: ${currentMode === 'firebase' ? 'block' : 'none'};">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>API Key</label>
+                <input type="text" id="cfg-apiKey" class="form-control" value="${fbConfig.apiKey || ''}" placeholder="AIzaSy..." />
+              </div>
+              <div class="form-group">
+                <label>Project ID</label>
+                <input type="text" id="cfg-projectId" class="form-control" value="${fbConfig.projectId || ''}" placeholder="fudma-eattendance-xxxx" />
+              </div>
             </div>
-            <div class="form-group">
-              <label>Messaging Sender ID (Optional)</label>
-              <input type="text" id="cfg-messagingSenderId" class="form-control" value="${config.messagingSenderId || ''}" placeholder="1234567890" />
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Auth Domain</label>
+                <input type="text" id="cfg-authDomain" class="form-control" value="${fbConfig.authDomain || ''}" placeholder="fudma-xxxx.firebaseapp.com" />
+              </div>
+              <div class="form-group">
+                <label>App ID</label>
+                <input type="text" id="cfg-appId" class="form-control" value="${fbConfig.appId || ''}" placeholder="1:xxxx:web:xxxx" />
+              </div>
             </div>
-          </div>
-
-          <div class="form-group">
-            <label>Cloud Functions Region</label>
-            <input type="text" id="cfg-functionsRegion" class="form-control" value="${config.functionsRegion || 'us-central1'}" placeholder="us-central1" />
-            <span class="form-help">Default is us-central1 unless your Firebase project functions are deployed elsewhere.</span>
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -481,24 +476,45 @@ class Application {
     `, true);
   }
 
-  async handleSaveFirebaseConfig(e) {
+  toggleConfigFields(mode) {
+    const sbSec = document.getElementById('cfg-section-supabase');
+    const fbSec = document.getElementById('cfg-section-firebase');
+    if (sbSec) sbSec.style.display = mode === 'supabase' ? 'block' : 'none';
+    if (fbSec) fbSec.style.display = mode === 'firebase' ? 'block' : 'none';
+  }
+
+  async handleSaveDatabaseConfig(e) {
     e.preventDefault();
     const mode = document.getElementById('cfg-mode').value;
-    const newConfig = {
-      apiKey: document.getElementById('cfg-apiKey').value.trim(),
-      projectId: document.getElementById('cfg-projectId').value.trim(),
-      authDomain: document.getElementById('cfg-authDomain').value.trim(),
-      appId: document.getElementById('cfg-appId').value.trim(),
-      storageBucket: document.getElementById('cfg-storageBucket').value.trim(),
-      messagingSenderId: document.getElementById('cfg-messagingSenderId').value.trim(),
-      functionsRegion: document.getElementById('cfg-functionsRegion').value.trim() || 'us-central1'
-    };
+    localStorage.setItem('fudma_engine_mode_v1', mode);
 
-    window.firebaseManager.saveConfig(newConfig, mode);
+    if (mode === 'supabase') {
+      const sbUrl = (document.getElementById('cfg-sbUrl')?.value || '').trim();
+      const sbKey = (document.getElementById('cfg-sbKey')?.value || '').trim();
+      if (sbUrl) localStorage.setItem('fudma_supabase_url', sbUrl);
+      if (sbKey) localStorage.setItem('fudma_supabase_publishable_key', sbKey);
+      if (window.firebaseManager) window.firebaseManager.setMode('supabase');
+    } else if (mode === 'firebase') {
+      const newConfig = {
+        apiKey: document.getElementById('cfg-apiKey')?.value.trim() || '',
+        projectId: document.getElementById('cfg-projectId')?.value.trim() || '',
+        authDomain: document.getElementById('cfg-authDomain')?.value.trim() || '',
+        appId: document.getElementById('cfg-appId')?.value.trim() || ''
+      };
+      if (window.firebaseManager) window.firebaseManager.saveConfig(newConfig, 'firebase');
+    } else {
+      if (window.firebaseManager) window.firebaseManager.setMode('mock');
+    }
+
     this.closeModal();
     this.showToast(`Database configuration saved! Operating in ${mode.toUpperCase()} mode.`, 'success');
     this.updateEngineBadge();
     setTimeout(() => window.location.reload(), 800);
+  }
+
+  // Backward compatibility alias for any existing buttons
+  handleSaveFirebaseConfig(e) {
+    return this.handleSaveDatabaseConfig(e);
   }
 }
 

@@ -20,11 +20,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Authorization bearer token required.' });
   }
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mkhzvzgluddaqaxilgkz.supabase.co';
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return res.status(500).json({ error: 'Server authentication configuration is incomplete.' });
+    return res.status(500).json({ error: 'Server administration configuration is incomplete. Please ensure SUPABASE_SERVICE_ROLE_KEY is configured in Vercel environment variables.' });
   }
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {

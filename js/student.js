@@ -342,8 +342,8 @@ class StudentController {
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="su-password" class="form-control" placeholder="••••••••" value="Fudma@2026" required />
-          <span class="form-help">Default password is set to <strong>Fudma@2026</strong>.</span>
+          <input type="password" id="su-password" class="form-control" placeholder="Choose a secure password (min 6 characters)" required minlength="6" />
+          <span class="form-help">Choose a secure password for your student portal account (minimum 6 characters).</span>
         </div>
         <div id="su-error-msg" style="color: var(--danger-solid); font-size: 0.85rem; margin-top: 6px; display: none;"></div>
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">

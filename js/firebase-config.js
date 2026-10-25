@@ -29,8 +29,10 @@ class FirebaseConfigManager {
   constructor() {
     this.config = this.loadConfig();
     const savedMode = localStorage.getItem(STORAGE_KEY_ENGINE_MODE);
-    this.mode = savedMode || (this.isConfigured() ? 'firebase' : 'mock');
-    this.status = 'uninitialized'; // 'uninitialized' | 'connected' | 'error' | 'mock'
+    // In this Supabase-migrated application, Supabase is the primary cloud engine.
+    // Firebase is strictly preserved for legacy recovery only when explicitly set to 'firebase'.
+    this.mode = savedMode === 'firebase' ? 'firebase' : (savedMode === 'mock' ? 'mock' : 'supabase');
+    this.status = this.mode === 'firebase' ? 'uninitialized' : 'connected'; // 'uninitialized' | 'connected' | 'error' | 'mock'
     this.initError = null;
     this.firebaseApp = null;
     this.auth = null;

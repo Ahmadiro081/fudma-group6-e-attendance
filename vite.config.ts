@@ -26,7 +26,7 @@ function copyStaticLegacyAssets(): Plugin {
       copyDirRecursive(path.resolve(__dirname, 'css'), path.join(distDir, 'css'));
     },
     transformIndexHtml(html) {
-      const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://mkhzvzgluddaqaxilgkz.supabase.co';
       const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
       const envScript = `<script>window.__ENV__ = Object.assign(window.__ENV__ || {}, { VITE_SUPABASE_URL: ${JSON.stringify(supabaseUrl)}, VITE_SUPABASE_PUBLISHABLE_KEY: ${JSON.stringify(supabaseKey)} });</script>`;
       return html.replace('</head>', `${envScript}</head>`);

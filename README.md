@@ -1,250 +1,239 @@
-<<<<<<< HEAD
 # E-ATTENDANCE SYSTEM WITH QR CODE
-### Artificial Intelligence Mini Project (GET 411) • Group 6 • Academic Session 2026/2027
-**Federal University Dutsin-Ma (FUDMA), Katsina State, Nigeria**  
-**Course Lecturer:** Malam Nura Muhammad  
+
+### Artificial Intelligence Mini Project (GET 411) | Group 6 | 2026/2027 Academic Session
+
+**Federal University Dutsin-Ma (FUDMA), Katsina State, Nigeria**
+
+**Course Lecturer:** Malam Nura Muhammad
 
 ---
 
-## 🏛️ Official Academic Identity
+## 1. Project Information
+
 * **Institution:** Federal University Dutsin-Ma (FUDMA)
 * **Course:** GET 411
 * **Project Category:** Artificial Intelligence Mini Project
-* **Project Group:** GROUP 6
+* **Project Group:** Group 6
 * **Academic Session:** 2026/2027
-* **Project Title:** E-ATTENDANCE SYSTEM WITH QR CODE
-* **Course Lecturer & Supervisor:** Malam Nura Muhammad
+* **Project Title:** E-Attendance System with QR Code
+* **Course Lecturer:** Malam Nura Muhammad
 
----
+## 2. Project Overview
 
-## 📋 Project Overview & Objectives
-The **FUDMA E-Attendance System with QR Code** is a full-stack, responsive, role-based academic attendance web application engineered to replace error-prone manual paper sign-in sheets in university lecture halls.
+The FUDMA E-Attendance System with QR Code is a web-based application designed to support electronic attendance recording during university lectures.
 
-### Key Objectives
-1. **Digitize Attendance Recording:** Eliminate physical sheets and manual data re-entry.
-2. **Session-Specific Dynamic QR Codes:** Allow course lecturers to generate secure, time-bound QR codes for active lectures.
-3. **Authenticated Student Verification:** Ensure only authenticated, enrolled students can record their presence.
-4. **Automated Server-Side Timestamping:** Eliminate timestamp tampering by computing timestamps on the trusted backend.
-5. **Automated Latecomer Detection:** Compare check-in timestamps against a lecturer-configured late threshold (e.g., 15 minutes after start). Automatically tag students as **Present (Green)** or **Late (Orange)**.
-6. **Atomic Duplicate Prevention:** Prevent double-scanning using compound document IDs (`session_{sessionId}_student_{studentUid}`).
-7. **Live Monitoring & Absence Finalization:** Enable lecturers to observe real-time check-ins and finalize absent students (**Absent - Red**).
-8. **Academic Analytical Reports:** Export lecture attendance logs directly to standard CSV format.
+The system aims to reduce the limitations of paper-based attendance registers by providing a digital platform for managing student attendance, lecture sessions, courses, and attendance reports.
 
----
+The application is being developed with a responsive interface and role-based access for administrators, lecturers, and students.
 
-## 🛠️ Technology Stack
-* **Frontend:**
-  * **HTML5:** Semantic academic page architecture and accessible modal dialogs.
-  * **CSS3:** University-themed design system (FUDMA Royal Blue `#0b3d91`, Amber `#f59e0b`, Emerald Green `#10b981`), glassmorphism, responsive tables, mobile layout.
-  * **Vanilla JavaScript (ES6+):** Modular asynchronous state machines, route guards, and DOM orchestration without third-party framework overhead.
-* **Backend & Database:**
-  * **Google Firebase Authentication:** Cryptographically verified user sessions.
-  * **Cloud Firestore:** NoSQL real-time document database storing Users, Courses, Lecture Sessions, Attendance Records, and Audit Logs.
-  * **Firebase Cloud Functions:** Trusted server-side execution (`recordAttendance`, `finalizeSession`) preventing client tampering.
-  * **Dual-Engine Architecture:** High-fidelity local database engine fallback (persisted in browser storage) allows 100% offline physical presentation and testing.
-* **QR Code Processing:**
-  * **QR Generation:** `qrcode.min.js` (generates time-nonce cryptographically signed tokens).
-  * **QR Scanning:** `html5-qrcode.min.js` (browser-native camera stream via `navigator.mediaDevices.getUserMedia`).
-* **Deployment:** Vercel / Firebase Hosting.
+## 3. Project Objectives
 
----
+The main objectives are to:
 
-## 👥 User Roles & Permissions
+1. Digitize the process of recording lecture attendance.
+2. Support QR-code-based attendance verification.
+3. Provide separate interfaces for administrators, lecturers, and students.
+4. Support course registration and student enrollment management.
+5. Record attendance timestamps and attendance status.
+6. Support the identification of late arrivals.
+7. Reduce duplicate attendance submissions.
+8. Provide attendance monitoring and reporting.
+9. Support the generation of downloadable attendance reports.
+10. Improve the organization and accessibility of academic attendance records.
 
-### 1. Administrator (Academic Registry)
-* Protected registry console.
-* Create, edit, and deactivate lecturer accounts.
-* Register students with official matriculation numbers and departments.
-* Create courses (e.g., `GET 411`, `CPE 401`) and assign course lecturers.
-* Manage course enrollments (assign students to courses).
-* Access system-wide attendance analytics and immutable audit logs.
-* Export master CSV attendance records.
-* *Note:* Self-registration as an administrator is strictly disabled.
+## 4. Technology Stack
 
-### 2. Lecturer (Faculty Instructor)
-* View assigned courses.
-* Create lecture sessions with:
-  * Course code & title
-  * Lecture venue (e.g., FUDMA Lecture Hall 3B)
-  * Date, start time, late arrival threshold, and closing time.
-  * Optional 6-character manual attendance code fallback (e.g., `AI4116`).
-* Display dynamic QR code in full-screen **Projector Mode** with a live countdown timer.
-* Start, pause, resume, and close attendance sessions.
-* Real-time live check-in monitoring table with automatic 5-second polling.
-* Finalize session: automatically mark all enrolled non-attendees as **Absent**.
-* Export session-specific CSV reports.
+The project uses the following technologies and services, subject to the current implementation.
 
-### 3. Student (Enrolled Scholar)
-* Secure sign-in to the student portal.
-* View student profile (Name, Matriculation Number, Department, Level).
-* View registered courses with real-time attendance standing.
-* Open camera viewfinder to scan the projector QR code.
-* Manual code entry fallback for devices without camera permissions.
-* Instant visual status confirmation:
-  * 🟢 **Present (On-Time):** Checked in prior to the late threshold.
-  * 🟠 **Late Arrival:** Checked in after the late threshold.
-  * 🔴 **Absent:** Finalized by the lecturer after session closure.
-* View complete personal attendance history (read-only, immutable).
+### Frontend
 
----
+* HTML5 for page structure.
+* CSS3 for styling and responsive layouts.
+* JavaScript (ES6+) for application logic and user interactions.
+* Vite for development and production builds.
 
-## 🔄 Core Attendance Workflow
+### Backend and Database
 
-```
-Lecturer Creates Session
-       │
-       ▼
-System Generates Cryptographic QR Code (Displayed on Projector)
-       │
-       ▼
-Student Scans QR Code with Device Camera (or Enters 6-Char Manual Code)
-       │
-       ▼
-Trusted Backend Validation:
-  ├── 1. Is student authenticated?
-  ├── 2. Is student enrolled in this course?
-  ├── 3. Does session exist and is status "active"?
-  └── 4. Has student ALREADY checked in? (Compound key lookup)
-       │
-       ▼
-Latecomer Calculation:
-  ├── Check-in Time < Late Threshold ──► Mark "PRESENT" (Green)
-  └── Check-in Time ≥ Late Threshold ──► Mark "LATE" (Orange)
-       │
-       ▼
-Firestore Transaction Saves Immutable Record:
-  ID: `session_{sessionId}_student_{studentUid}`
-       │
-       ▼
-Lecturer Dashboard Updates Live Feed & Finalizes Absences (Red)
-```
+* Supabase for authentication and database services.
+* PostgreSQL for structured academic and attendance data.
+* Server-side API endpoints for operations requiring trusted backend validation.
+* Vercel for application deployment and serverless API hosting.
 
----
+### QR Code Functionality
 
-## 📖 Technical Defense Guide for Group 6 Students
-During your physical course assessment and presentation to **Malam Nura Muhammad**, you may be asked how specific modules function. Here are the core technical explanations:
+The application is designed to support QR-code generation and scanning for lecture attendance using high-performance vendor libraries:
+* `qrcode.min.js` for dynamic SVG/Canvas token generation.
+* `html5-qrcode.min.js` for camera stream QR scanning.
 
-### 1. What is the role of HTML, CSS, and Vanilla JavaScript?
-* **HTML5** provides semantic document structure (`<header>`, `<nav>`, `<main>`, `<dialog>`, `<table>`).
-* **CSS3** applies the FUDMA visual identity (variables, card components, projector mode, responsive tables).
-* **JavaScript (ES6+)** powers client-side routing, handles the camera video stream, decodes QR matrix data, invokes server transactions, and updates the DOM dynamically.
+## 5. User Roles
 
-### 2. How does Firebase Authentication protect the system?
-Firebase Auth issues cryptographically signed JSON Web Tokens (JWT) upon login. Client requests pass this token in headers. The database rules and Cloud Functions read `request.auth.uid` to establish the caller's verified identity, preventing impersonation.
+### Administrator
 
-### 3. How does Cloud Firestore store records?
-Firestore is a NoSQL document database organized into collections:
-* `users`: Profiles with roles (`admin`, `lecturer`, `student`).
-* `courses`: Course definitions and `enrolledStudentIds` arrays.
-* `lectureSessions`: Active, paused, and closed lecture sessions.
-* `attendanceRecords`: Validated check-ins indexed by session and student.
-* `auditLogs`: Append-only security and activity trail.
+The administrator interface is intended to support authorized academic management activities, including:
 
-### 4. How does QR code generation and scanning work?
-* **Generation:** `qrcode.min.js` translates a JSON payload containing the `sessionId`, `courseCode`, and a cryptographic timestamp nonce into a 2D QR matrix rendered onto an HTML5 canvas.
-* **Scanning:** `html5-qrcode.min.js` accesses the camera stream via `navigator.mediaDevices.getUserMedia`, captures successive video frames, applies image binarization, and extracts the payload string.
+* Managing student and lecturer records.
+* Managing courses and course assignments.
+* Managing student enrollments.
+* Reviewing attendance information.
+* Accessing authorized administrative reports.
 
-### 5. How is late arrival determined?
-Late arrival is computed using the **trusted server time**, never the student's device clock (which could be manually altered). If the server timestamp is greater than or equal to `session.lateThreshold` (e.g., `08:15:00`), the record is flagged `isLate: true` and labeled **Late**.
+### Lecturer
 
-### 6. How is duplicate attendance prevented?
-Each attendance record uses a unique, deterministic document identifier composed of:
-$$\text{docId} = \text{sessionId} + \text{"\_"} + \text{studentUid}$$
-In Firestore, running a transaction with this unique ID guarantees that if a document with that exact compound ID already exists, any subsequent write is rejected atomically.
+The lecturer interface is intended to support:
 
-### 7. What are the security limitations of QR-based attendance?
-A 2D QR code displayed on a screen cannot independently prove physical proximity: a student in the hall could take a photo of the code and transmit it to an absent student via instant messaging.
-* **Our Project Mitigations:**
-  1. Time-bound dynamic tokens with short expiration windows.
-  2. Immediate closure and absence finalization by the lecturer.
-  3. Course enrollment verification.
-  4. Immutable audit logging of all check-in events.
-  *Future recommendations for institutional roll-out include GPS geofencing and university Wi-Fi subnet verification.*
+* Viewing assigned courses.
+* Creating and managing lecture sessions.
+* Displaying attendance QR codes.
+* Monitoring student check-ins.
+* Reviewing attendance records.
+* Generating attendance reports.
 
----
+### Student
 
-## ⚡ Demonstration Accounts (Pre-Seeded for Quick Testing)
+The student interface is intended to support:
 
-| Role | Account Name | Email | Password | Identifier |
-| :--- | :--- | :--- | :--- | :--- |
-| **Lecturer** | Malam Nura Muhammad | `nura.muhammad@fudma.edu.ng` | `lecturer123` | Staff ID: `FUDMA/STAFF/ENG/082` |
-| **Student 1** | Ibrahim Musa | `student1@fudma.edu.ng` | `student123` | Matric: `FUDMA/2022/UG/ENG/0061` |
-| **Student 2** | Fatima Aliyu | `student2@fudma.edu.ng` | `student123` | Matric: `FUDMA/2022/UG/ENG/0062` |
-| **Administrator** | FUDMA Academic Registry Admin | `admin@fudma.edu.ng` | `admin123` | Staff ID: `FUDMA/STAFF/ADM/014` |
+* Accessing a personal account.
+* Viewing registered courses.
+* Participating in attendance verification.
+* Viewing personal attendance records.
 
-*Tip:* Use the **Quick Role Switcher** pill bar at the top of the interface to switch between accounts instantly during your physical presentation!
+The availability of individual functions depends on the current application implementation and backend configuration.
 
----
+## 6. Attendance Workflow
 
-## 🚀 Local Installation & Running Guide
+The intended workflow is:
 
-### Option A: Open directly in any modern browser
-Because the project uses standard web technologies and self-contained vendor libraries in `assets/vendor/`, you can run it immediately without requiring Node.js:
-1. Double-click `index.html` or open it in Chrome, Edge, or Firefox.
-2. The application will initialize the persistent local presentation engine.
+1. An authorized lecturer creates a lecture session.
+2. The application generates an attendance QR code associated with the session.
+3. An eligible student scans the QR code or uses another supported attendance method (such as a 6-character manual attendance code).
+4. The backend validates the request, including the student's identity, enrollment, session status, and duplicate attendance.
+5. The system records the attendance result and timestamp.
+6. The lecturer reviews the recorded attendance.
+7. Authorized users access the relevant attendance reports.
 
-### Option B: Run with a local HTTP server (Recommended for Camera Access)
-Modern web browsers require a secure origin (`http://localhost` or `https://`) for camera permissions.
-Using Python:
+Security-sensitive validation should be performed on the trusted backend rather than relying exclusively on browser-side JavaScript.
+
+## 7. Database Structure
+
+The Supabase database is designed around the following entities:
+
+* `profiles` — User profile information and roles (`admin`, `lecturer`, `student`).
+* `courses` — Course information and lecturer assignments (`GET 411`, etc.).
+* `course_enrollments` — Relationships between students and courses.
+* `lecture_sessions` — Lecture session details, status, and manual code hash.
+* `attendance_records` — Attendance records and verification details with `UNIQUE(session_id, student_id)`.
+* `audit_logs` — Relevant application activity and audit information.
+
+Actual database columns, constraints, permissions, and available operations are determined by the project's Supabase schema and configuration in `supabase/migrations/`.
+
+## 8. Security Considerations
+
+The application should enforce the following principles:
+
+* Authenticate users before allowing protected operations.
+* Verify permissions on the server or through appropriate Row Level Security (RLS) policies.
+* Confirm that students are enrolled before accepting attendance.
+* Prevent duplicate attendance records for the same student and lecture session.
+* Use trusted server-side timestamps for attendance decisions.
+* Protect administrative operations from unauthorized access.
+* Never expose Supabase service-role credentials in browser-side code.
+* Avoid publishing real passwords, API secrets, or private credentials in the repository.
+
+QR codes alone cannot guarantee that the person scanning them is physically present in a lecture hall. Additional verification may be considered for future improvements.
+
+## 9. Local Development
+
+### Prerequisites
+
+Install:
+
+* Node.js (v18+) and npm.
+* Git.
+* Visual Studio Code or another suitable code editor.
+
+### Installation
+
+Clone the repository:
+
 ```bash
-# In the project directory:
-python -m http.server 3000
+git clone https://github.com/Ahmadiro081/fudma-group6-e-attendance.git
 ```
-Open `http://localhost:3000` in your web browser.
 
-Using Node.js `npx serve`:
+Enter the project directory:
+
 ```bash
-npx serve .
+cd fudma-group6-e-attendance
 ```
 
----
+Install the project dependencies:
 
-## ☁️ Connecting to Real Firebase (Optional Production Step)
-1. Go to the [Firebase Console](https://console.firebase.google.com/) and create a project (e.g., `fudma-eattendance`).
-2. Enable **Authentication** (Email/Password provider).
-3. Enable **Cloud Firestore** in Production mode.
-4. Deploy the security rules:
-   ```bash
-   firebase deploy --only firestore:rules
-   ```
-5. Deploy Cloud Functions:
-   ```bash
-   cd functions
-   npm install
-   firebase deploy --only functions
-   ```
-6. In the web application interface:
-   * Click the **Presentation Engine** badge in the navigation bar.
-   * Paste your Firebase Project credentials (`apiKey`, `projectId`, `appId`).
-   * Switch the toggle to **Live Google Firebase Cloud**.
-   * Click **Save Configuration**.
+```bash
+npm install
+```
 
----
+Configure the required environment variables using `.env.example`. Do not commit private credentials to GitHub.
 
-## 🌐 Deploying to Vercel
-1. Install Vercel CLI: `npm i -g vercel`
-2. Run in the project directory:
-   ```bash
-   vercel
-   ```
-3. Follow the CLI prompts. Vercel will deploy the application with clean URLs configured via `vercel.json`.
+Start the development server:
 
----
+```bash
+npm run dev
+```
 
-## ✅ Presentation Testing Checklist
-Use this step-by-step checklist to rehearse your project defense:
-- [x] **Academic Branding Verification:** Header, footer, hero, and metadata show FUDMA, GET 411, GROUP 6, 2026/2027, and Malam Nura Muhammad.
-- [x] **Editable Team Roster:** Navigate to `Group 6 Info` and edit member names/matriculation numbers to match your group.
-- [x] **Lecturer Creates Lecture Session:** Select GET 411, configure 8:00 AM start, 8:15 AM threshold, and 9:00 AM closing.
-- [x] **Projector Mode Display:** Open Projector view, confirm QR code renders, countdown timer ticks down, and 6-character code shows.
-- [x] **Student Checks In (On-Time):** Switch to Student 1, scan the QR code or enter code before threshold. Verify **Present (Green)** badge.
-- [x] **Duplicate Prevention:** Try submitting attendance again for the same student. Verify error: *"Your attendance has already been recorded for this lecture."*
-- [x] **Latecomer Detection:** Create a session with a past late threshold (e.g., 5 minutes ago) or submit after threshold. Verify **Late (Orange)** badge.
-- [x] **Unenrolled Rejection:** Test with a student not enrolled in GET 411. Verify registration rejection.
-- [x] **Live Attendance Monitoring:** Check lecturer console to confirm real-time table update and metric cards.
-- [x] **Finalize Absences:** Click *Finalize & Mark Absences* on a closed session. Verify remaining enrolled students receive **Absent (Red)** badges.
-- [x] **CSV Export:** Download the session CSV and inspect columns (`S/N, Student Name, Matric Number, Check-In Time, Status, Late Arrival Flag`).
-- [x] **Admin Auditing:** Switch to Administrator, inspect audit logs, course assignments, and user account toggles.
-=======
-# fudma-group6-e-attendance
->>>>>>> b667683e76dbfbefe04d81169e593a4742187ec8
+Follow the local URL displayed in the terminal (`http://localhost:3000`).
+
+### Production Build
+
+Run:
+
+```bash
+npm run build
+```
+
+Use the project's configured production preview or deployment process to test the resulting build.
+
+## 10. Deployment
+
+The project is configured for deployment using Vercel.
+
+The deployment URL is:
+
+[https://fudma-group6-e-attendance.vercel.app/](https://fudma-group6-e-attendance.vercel.app/)
+
+Deployment success does not by itself confirm that authentication, database permissions, QR verification, or attendance recording are functioning correctly. These features should be tested separately.
+
+## 11. Testing Checklist
+
+The team should verify the following before presenting the application:
+
+* Academic details correctly identify FUDMA, GET 411, Group 6, and the 2026/2027 session.
+* Users can authenticate through the configured authentication service.
+* Role-based access controls prevent unauthorized actions.
+* Lecturers can access only their authorized courses and sessions.
+* Students can access their permitted course and attendance information.
+* QR-code generation and verification work as intended.
+* Unenrolled students cannot record attendance for a course.
+* Duplicate attendance submissions are rejected.
+* Attendance timestamps and status are recorded correctly.
+* Attendance reports contain the expected information.
+* Administrative actions respect the configured permissions.
+* The production deployment works with the required environment variables.
+
+## 12. Academic Project Team
+
+**Institution:** Federal University Dutsin-Ma (FUDMA)  
+**Course:** GET 411  
+**Project Group:** Group 6  
+**Academic Session:** 2026/2027  
+**Course Lecturer:** Malam Nura Muhammad  
+
+### Group 6 Members
+
+| S/N | Full Name | Matriculation Number | Role |
+| :---: | :--- | :--- | :--- |
+| 1 | **Nura HAMZA MASARI** | `ENG/2025/37401` | Team Lead / Full-Stack Integration |
+| 2 | **Abdullahi Nuhu** | `ENG/2024/31912` | System Analysis & Requirements |
+| 3 | **Adamu Jibril** | `ENG/2024/32388` | Database & Supabase Architecture |
+| 4 | **Dahiru Umar Karofi** | `ENG/2024/34360` | Hardware Interface & QR Code Engine |
+| 5 | **OLOYEDE PROMISE ISSAC** | `ENG/2024/35303` | Frontend UI/UX & Responsive Design |
+| 6 | **TAIYE JOHN OLONITOLA** | `ENG/2024/34750` | Quality Assurance & Assessment Testing |
+| 7 | **BAKIR MUHAMMAD MUSTAPHA** | `ENG/2024/35485` | Security Rules & Documentation |

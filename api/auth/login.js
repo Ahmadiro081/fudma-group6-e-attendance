@@ -46,12 +46,12 @@ export default async function handler(req, res) {
   const cleanInput = identifier.trim();
   let resolvedEmail = null;
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mkhzvzgluddaqaxilgkz.supabase.co';
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  const anonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || serviceRoleKey;
 
-  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
-    return res.status(500).json({ error: 'Server authentication configuration is incomplete.' });
+  if (!supabaseUrl || (!serviceRoleKey && !anonKey)) {
+    return res.status(500).json({ error: 'Server authentication configuration is incomplete. Please ensure SUPABASE_SERVICE_ROLE_KEY is set in Vercel environment variables.' });
   }
 
   // 1. Privileged Admin Client (Used exclusively for server-side lookup of matriculation number)
@@ -62,6 +62,16 @@ export default async function handler(req, res) {
   try {
     if (cleanInput.includes('@')) {
       resolvedEmail = cleanInput.toLowerCase();
+      // Check status of email user before authentication
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('status')
+        .eq('email', resolvedEmail)
+        .maybeSingle();
+
+      if (profile && profile.status === 'deactivated') {
+        return res.status(403).json({ error: 'This account has been deactivated. Contact the Academic Registry.' });
+      }
     } else {
       const cleanMatric = cleanInput.toUpperCase().replace(/\s+/g, '');
       const { data: profile, error: lookupErr } = await supabaseAdmin

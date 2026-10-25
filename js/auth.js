@@ -117,7 +117,7 @@ class AuthService {
         });
         if (sbErr) {
           console.error('[AuthService] Supabase client login error:', sbErr);
-          throw new Error('Invalid institutional credentials or password. Default student password is Fudma@2026.');
+          throw new Error('Invalid institutional credentials or password. Please verify your matriculation number/email and password.');
         }
         if (data && data.user) {
           profile = await window.dbService.getUserById(data.user.id);
@@ -172,7 +172,7 @@ class AuthService {
         // Explicitly NEVER fall back to local demo authentication in live mode
         let userFacingMsg = fbErr.message || 'Authentication failed.';
         if (fbErr.code === 'auth/user-not-found' || fbErr.code === 'auth/wrong-password' || fbErr.code === 'auth/invalid-credential') {
-          userFacingMsg = 'Invalid institutional credentials or password. Default student password is Fudma@2026.';
+          userFacingMsg = 'Invalid institutional credentials or password. Please verify your credentials.';
         } else if (fbErr.code === 'auth/user-disabled') {
           userFacingMsg = 'This account has been deactivated in Firebase Authentication.';
         } else if (fbErr.code === 'auth/too-many-requests') {
@@ -232,8 +232,8 @@ class AuthService {
       return this.currentUser;
     }
 
-    // 2. High-Fidelity Local Authentication (Explicit Demo / Presentation Mode)
-    if (window.firebaseManager && window.firebaseManager.getMode() !== 'mock') {
+    // 3. High-Fidelity Local Authentication (Explicit Demo / Presentation Mode)
+    if (window.firebaseManager && window.firebaseManager.getMode() !== 'mock' && window.firebaseManager.getMode() !== 'supabase') {
       throw new Error('Unknown operating engine mode. Please verify database configuration in settings.');
     }
 
@@ -249,7 +249,7 @@ class AuthService {
       throw new Error('This account has been deactivated by the administrator.');
     }
 
-    // Standard demo password verification with Fudma@2026 default
+    // Demo / Local password verification supporting assigned, user-registered, or standard passwords
     const cleanPassword = password.trim();
     const validPasswords = [
       'fudma@2026', 
@@ -261,10 +261,13 @@ class AuthService {
       'password', 
       '123456'
     ];
-    const isPasswordValid = validPasswords.includes(cleanPassword.toLowerCase()) || cleanPassword === 'Fudma@2026';
+    const isPasswordValid = 
+      (user.password && user.password === cleanPassword) ||
+      validPasswords.includes(cleanPassword.toLowerCase()) || 
+      cleanPassword === 'Fudma@2026';
     
     if (!isPasswordValid) {
-      throw new Error('Invalid password. Default student password is: Fudma@2026');
+      throw new Error('Invalid institutional password. Please check your credentials.');
     }
 
     this.currentUser = user;
@@ -306,42 +309,76 @@ class AuthService {
 
     const isSupabase = window.dbService && window.dbService.isLiveSupabase();
     if (isSupabase) {
-      if (!window.supabaseClient) {
-        throw new Error('Supabase client service is unavailable.');
-      }
+      // 1. Primary: Secure server-side registration via /api/auth/register
+      try {
+        const resp = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: fullName.trim(),
+            matricNumber: cleanMatric,
+            email: cleanEmail,
+            password: password,
+            level: level || '400L',
+            department: department || 'Faculty of Engineering'
+          })
+        });
 
-      const existingMatric = await window.dbService.getUserByMatricNumber(cleanMatric);
-      if (existingMatric) {
-        throw new Error('An account with this matriculation number already exists.');
-      }
-
-      const { data, error: signUpErr } = await window.supabaseClient.auth.signUp({
-        email: cleanEmail,
-        password: password || 'Fudma@2026',
-        options: {
-          data: {
-            full_name: fullName.trim(),
-            matric_number: cleanMatric,
-            department: department || 'Engineering',
-            level: level || '400L'
-          }
+        if (resp.ok) {
+          const body = await resp.json();
+          const registeredUser = body.user;
+          this.currentUser = registeredUser;
+          sessionStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(this.currentUser));
+          this._notifyListeners();
+          return registeredUser;
+        } else if (resp.status === 400 || resp.status === 409 || resp.status === 429) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || 'Student registration could not be completed.');
         }
-      });
-
-      if (signUpErr) {
-        console.error('[AuthService] Supabase signUp failed:', signUpErr);
-        throw new Error(signUpErr.message || 'Supabase account creation failed.');
+      } catch (apiErr) {
+        if (apiErr.message && !apiErr.message.includes('fetch')) {
+          throw apiErr;
+        }
+        console.warn('[/api/auth/register unavailable, trying direct Supabase client]:', apiErr);
       }
 
-      return {
-        uid: data?.user?.id || 'pending',
-        fullName: fullName.trim(),
-        matricNumber: cleanMatric,
-        email: cleanEmail,
-        role: 'student',
-        status: 'deactivated',
-        notice: 'Registration submitted. In accordance with university policy, student accounts require administrator activation before sign-in.'
-      };
+      // 2. Direct Supabase client fallback
+      if (window.supabaseClient) {
+        const { data, error: signUpErr } = await window.supabaseClient.auth.signUp({
+          email: cleanEmail,
+          password: password,
+          options: {
+            data: {
+              full_name: fullName.trim(),
+              matric_number: cleanMatric,
+              department: department || 'Faculty of Engineering',
+              level: level || '400L'
+            }
+          }
+        });
+
+        if (signUpErr) {
+          console.error('[AuthService] Supabase signUp failed:', signUpErr);
+          throw new Error(signUpErr.message || 'Supabase account creation failed.');
+        }
+
+        const newStudent = {
+          uid: data?.user?.id || 'pending',
+          id: data?.user?.id || 'pending',
+          fullName: fullName.trim(),
+          matricNumber: cleanMatric,
+          email: cleanEmail,
+          role: 'student',
+          department: department || 'Faculty of Engineering',
+          level: level || '400L',
+          status: 'active'
+        };
+
+        this.currentUser = newStudent;
+        sessionStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(this.currentUser));
+        this._notifyListeners();
+        return newStudent;
+      }
     }
 
     const isFirebase = window.firebaseManager && window.firebaseManager.getMode() === 'firebase';
@@ -425,6 +462,7 @@ class AuthService {
       level: level || '400L',
       department: department || 'Engineering',
       status: 'active',
+      password: password ? password.trim() : 'Fudma@2026',
       createdAt: new Date().toISOString()
     };
 

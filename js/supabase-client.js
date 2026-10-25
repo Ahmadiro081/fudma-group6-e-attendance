@@ -15,7 +15,7 @@ const envUrl =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) ||
   (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__.VITE_SUPABASE_URL) ||
   (typeof window !== 'undefined' && window.localStorage && localStorage.getItem('fudma_supabase_url')) ||
-  '';
+  'https://mkhzvzgluddaqaxilgkz.supabase.co';
 
 const envKey = 
   (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY)) ||

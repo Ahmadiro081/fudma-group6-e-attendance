@@ -19,13 +19,17 @@ class DbService {
   }
 
   isLiveFirestore() {
-    return window.firebaseManager && window.firebaseManager.getMode() === 'firebase' && window.firebaseManager.firestore;
+    const mode = localStorage.getItem('fudma_engine_mode_v1');
+    return mode === 'firebase' && window.firebaseManager && window.firebaseManager.firestore;
   }
 
   isLiveSupabase() {
-    const mode = localStorage.getItem('fudma_engine_mode_v1') || 
-      (window.supabaseBridge && window.supabaseBridge.isReady() ? 'supabase' : 'mock');
-    return mode === 'supabase' && window.supabaseBridge && window.supabaseBridge.isReady();
+    const mode = localStorage.getItem('fudma_engine_mode_v1');
+    if (mode === 'firebase' || mode === 'mock') {
+      return false;
+    }
+    // If explicitly 'supabase' or default/unset
+    return !!(window.supabaseBridge && window.supabaseBridge.isReady());
   }
 
 
