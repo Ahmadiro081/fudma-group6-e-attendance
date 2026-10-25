@@ -138,7 +138,13 @@ class SupabaseBridge {
       .select()
       .single();
 
-    if (error && (error.message.includes("'level' column") || (error.message.includes('level') && error.message.includes('schema cache')))) {
+    const isMissingLevelColumn = error && typeof error.message === 'string' && (
+      (error.message.includes("'level' column") && error.message.includes('schema cache')) ||
+      (error.message.includes('level') && error.message.includes('profiles') && error.message.includes('schema cache')) ||
+      error.message.toLowerCase().includes("could not find the 'level' column")
+    );
+
+    if (isMissingLevelColumn) {
       const retryResult = await client
         .from('profiles')
         .upsert(profilePayload)

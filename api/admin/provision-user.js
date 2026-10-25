@@ -105,7 +105,14 @@ export default async function handler(req, res) {
       .from('profiles')
       .upsert({ ...profilePayload, level: cleanLevel });
 
-    if (saveErr && (saveErr.message.includes("'level' column") || (saveErr.message.includes('level') && saveErr.message.includes('schema cache')))) {
+    // Tightened error detection: only fallback if PostgREST specifically reports missing 'level' column in schema cache
+    const isMissingLevelColumn = saveErr && typeof saveErr.message === 'string' && (
+      (saveErr.message.includes("'level' column") && saveErr.message.includes('schema cache')) ||
+      (saveErr.message.includes('level') && saveErr.message.includes('profiles') && saveErr.message.includes('schema cache')) ||
+      saveErr.message.toLowerCase().includes("could not find the 'level' column")
+    );
+
+    if (isMissingLevelColumn) {
       console.warn('[/api/admin/provision-user]: "level" column not present in public.profiles. Retrying without level column.');
       const retryResult = await supabaseAdmin
         .from('profiles')

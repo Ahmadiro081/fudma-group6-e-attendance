@@ -161,9 +161,14 @@ export default async function handler(req, res) {
       .from('profiles')
       .upsert({ ...profilePayload, level: cleanLevel });
 
-    // If PostgREST schema cache rejects the 'level' column because it was not migrated in public.profiles,
-    // gracefully retry without the 'level' column so registration succeeds immediately without rollbacks.
-    if (profileErr && (profileErr.message.includes("'level' column") || (profileErr.message.includes('level') && profileErr.message.includes('schema cache')))) {
+    // Tightened error detection: only fallback if PostgREST specifically reports missing 'level' column in schema cache
+    const isMissingLevelColumn = profileErr && typeof profileErr.message === 'string' && (
+      (profileErr.message.includes("'level' column") && profileErr.message.includes('schema cache')) ||
+      (profileErr.message.includes('level') && profileErr.message.includes('profiles') && profileErr.message.includes('schema cache')) ||
+      profileErr.message.toLowerCase().includes("could not find the 'level' column")
+    );
+
+    if (isMissingLevelColumn) {
       console.warn('[/api/auth/register]: "level" column not present in public.profiles. Retrying without level column.');
       const retryResult = await supabaseAdmin
         .from('profiles')
