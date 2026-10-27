@@ -610,6 +610,8 @@ class AuthService {
       user = await window.dbService.getUserById('student_006'); // TAIYE JOHN OLONITOLA (ENG/2024/34750)
     } else if (roleOrUid === 'student7' || roleOrUid === 'bakir' || roleOrUid === 'mustapha') {
       user = await window.dbService.getUserById('student_007'); // BAKIR MUHAMMAD MUSTAPHA (ENG/2024/35485)
+    } else if (roleOrUid === 'student8' || roleOrUid === 'bello' || roleOrUid === 'muhamed' || roleOrUid === 'muhammad' || roleOrUid === '32969' || roleOrUid === 'ENG/2024/32969') {
+      user = await window.dbService.getUserById('student_008'); // Abdullahi bello Muhamed (ENG/2024/32969)
     } else {
       user = await window.dbService.getUserById(roleOrUid) || await window.dbService.getUserByMatricNumber(roleOrUid);
     }

@@ -102,19 +102,32 @@
           👨‍🏫 Lecturer (Nura Muhammad)
         </button>
         <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student5')" title="OLOYEDE PROMISE ISSAC (ENG/2024/35303) - Mechatronics">
-          🎓 Student (Oloyede Promise - Mechatronics)
+          🎓 Student (Oloyede Promise)
         </button>
         <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student1')" title="Nura HAMZA MASARI (ENG/2025/37401)">
           🎓 Student (Nura Hamza)
         </button>
-        <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student2')" title="Abdullahi Nuhu (ENG/2024/31912)">
-          🎓 Student (Abdullahi Nuhu)
-        </button>
         <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('admin')">
           🛡️ Administrator
         </button>
+        
+        <!-- Student Selection Dropdown List -->
+        <div style="display: inline-flex; align-items: center; gap: 4px;">
+          <select id="quick-student-select" class="form-control form-control-sm" style="height: 31px; padding: 2px 8px; font-size: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--gray-300); background: #ffffff; cursor: pointer; color: var(--gray-800);" onchange="if(this.value){window.authService.quickSwitch(this.value); this.value='';}" title="Select any Group 6 student to log in instantly">
+            <option value="">🎓 Select Student to Log In...</option>
+            <option value="student5">🎓 Oloyede Promise (ENG/2024/35303) — Mechatronics</option>
+            <option value="student1">🎓 Nura Hamza Masari (ENG/2025/37401)</option>
+            <option value="student2">🎓 Abdullahi Nuhu (ENG/2024/31912)</option>
+            <option value="student3">🎓 Adamu Jibril (ENG/2024/32388)</option>
+            <option value="student4">🎓 Dahiru Umar Karofi (ENG/2024/34360)</option>
+            <option value="student6">🎓 Taiye John Olonitola (ENG/2024/34750)</option>
+            <option value="student7">🎓 Bakir Muhammad Mustapha (ENG/2024/35485)</option>
+            <option value="student8">🎓 Abdullahi bello Muhamed (ENG/2024/32969)</option>
+          </select>
+        </div>
+
         <button class="btn btn-secondary btn-sm" onclick="window.app.navigate('project-info-view')">
-          👥 Group 6 Team (7 Students)
+          👥 Group 6 Team (8 Students)
         </button>
       </div>
     </div>

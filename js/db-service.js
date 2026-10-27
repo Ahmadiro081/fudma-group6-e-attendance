@@ -171,6 +171,17 @@ class DbService {
           level: '400L',
           status: 'active',
           createdAt: '2026-09-02T10:30:00Z'
+        },
+        {
+          uid: 'student_008',
+          fullName: 'Abdullahi bello Muhamed',
+          matricNumber: 'ENG/2024/32969',
+          email: 'abdullahi.bello@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:35:00Z'
         }
       ];
       this._setLocal(this.collections.users, defaultUsers);
@@ -192,7 +203,8 @@ class DbService {
             'student_004',
             'student_005',
             'student_006',
-            'student_007'
+            'student_007',
+            'student_008'
           ],
           createdAt: '2026-09-05T09:00:00Z'
         },
@@ -212,7 +224,8 @@ class DbService {
             'student_004',
             'student_005',
             'student_006',
-            'student_007'
+            'student_007',
+            'student_008'
           ],
           createdAt: '2026-09-05T09:30:00Z'
         }
@@ -358,6 +371,20 @@ class DbService {
           status: 'present',
           isLate: false,
           verificationMethod: 'manual_code'
+        },
+        {
+          id: 'session_past_01_student_008',
+          lectureSessionId: 'session_past_01',
+          studentUid: 'student_008',
+          studentName: 'Abdullahi bello Muhamed',
+          matricNumber: 'ENG/2024/32969',
+          courseId: 'course_get411',
+          courseCode: 'GET 411',
+          checkInTime: '08:14:22',
+          timestamp: '2026-10-15T08:14:22Z',
+          status: 'present',
+          isLate: false,
+          verificationMethod: 'qr_scan'
         }
       ];
       this._setLocal(this.collections.attendance, defaultAttendance);
@@ -457,14 +484,25 @@ class DbService {
           level: '400L',
           status: 'active',
           createdAt: '2026-09-02T10:30:00Z'
+        },
+        {
+          uid: 'student_008',
+          fullName: 'Abdullahi bello Muhamed',
+          matricNumber: 'ENG/2024/32969',
+          email: 'abdullahi.bello@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:35:00Z'
         }
       ];
       this._setLocal(this.collections.users, [...nonStudents, ...updatedStudents]);
 
-      // Ensure courses enroll all 7 students
+      // Ensure courses enroll all 8 students
       const storedCourses = this._getLocal(this.collections.courses);
       if (storedCourses && storedCourses.length > 0) {
-        const studentIds = ['student_001', 'student_002', 'student_003', 'student_004', 'student_005', 'student_006', 'student_007'];
+        const studentIds = ['student_001', 'student_002', 'student_003', 'student_004', 'student_005', 'student_006', 'student_007', 'student_008'];
         storedCourses.forEach(c => {
           c.enrolledStudentIds = Array.from(new Set([...(c.enrolledStudentIds || []), ...studentIds]));
         });
@@ -472,7 +510,7 @@ class DbService {
       }
     }
 
-    // Ensure Oloyede Promise Issac department is updated to Mechatronics in stored users
+    // Ensure Oloyede Promise Issac and Abdullahi bello Muhamed are properly synced in stored users
     const currentUsers = this._getLocal(this.collections.users);
     if (currentUsers && currentUsers.length > 0) {
       let updatedUser = false;
@@ -482,8 +520,37 @@ class DbService {
           updatedUser = true;
         }
       });
+      if (!currentUsers.some(u => (u.matricNumber || '').toUpperCase().includes('32969'))) {
+        currentUsers.push({
+          uid: 'student_008',
+          fullName: 'Abdullahi bello Muhamed',
+          matricNumber: 'ENG/2024/32969',
+          email: 'abdullahi.bello@fudma.edu.ng',
+          role: 'student',
+          department: 'Engineering',
+          level: '400L',
+          status: 'active',
+          createdAt: '2026-09-02T10:35:00Z'
+        });
+        updatedUser = true;
+      }
       if (updatedUser) {
         this._setLocal(this.collections.users, currentUsers);
+      }
+    }
+
+    // Ensure courses enroll student_008
+    const activeCourses = this._getLocal(this.collections.courses);
+    if (activeCourses && activeCourses.length > 0) {
+      let coursesUpdated = false;
+      activeCourses.forEach(c => {
+        if (!c.enrolledStudentIds || !c.enrolledStudentIds.includes('student_008')) {
+          c.enrolledStudentIds = Array.from(new Set([...(c.enrolledStudentIds || []), 'student_008']));
+          coursesUpdated = true;
+        }
+      });
+      if (coursesUpdated) {
+        this._setLocal(this.collections.courses, activeCourses);
       }
     }
   }

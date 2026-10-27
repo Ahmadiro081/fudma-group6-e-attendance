@@ -15,6 +15,7 @@ DECLARE
     v_st5_id UUID := '00000000-0000-0000-0000-000000000015';
     v_st6_id UUID := '00000000-0000-0000-0000-000000000016';
     v_st7_id UUID := '00000000-0000-0000-0000-000000000017';
+    v_st8_id UUID := '00000000-0000-0000-0000-000000000018';
     v_enc_pass TEXT;
 BEGIN
     -- Encrypt default password 'Fudma@2026'
@@ -28,14 +29,15 @@ BEGIN
         (v_admin_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Academic Registry Administrator"}', NOW(), NOW()),
         -- Lecturer
         (v_lecturer_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nura.muhammad@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Malam Nura Muhammad"}', NOW(), NOW()),
-        -- 7 Official Students
+        -- 8 Official Students
         (v_st1_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nura.masari@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Nura HAMZA MASARI","matric_number":"ENG/2025/37401"}', NOW(), NOW()),
         (v_st2_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'abdullahi.nuhu@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Abdullahi Nuhu","matric_number":"ENG/2024/31912"}', NOW(), NOW()),
         (v_st3_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'adamu.jibril@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Adamu Jibril","matric_number":"ENG/2024/32388"}', NOW(), NOW()),
         (v_st4_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dahiru.karofi@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Dahiru Umar Karofi","matric_number":"ENG/2024/34360"}', NOW(), NOW()),
         (v_st5_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'oloyede.promise@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"OLOYEDE PROMISE ISSAC","matric_number":"ENG/2024/35303","department":"Mechatronics"}', NOW(), NOW()),
         (v_st6_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'taiye.olonitola@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"TAIYE JOHN OLONITOLA","matric_number":"ENG/2024/34750"}', NOW(), NOW()),
-        (v_st7_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'bakir.mustapha@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"BAKIR MUHAMMAD MUSTAPHA","matric_number":"ENG/2024/35485"}', NOW(), NOW())
+        (v_st7_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'bakir.mustapha@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"BAKIR MUHAMMAD MUSTAPHA","matric_number":"ENG/2024/35485"}', NOW(), NOW()),
+        (v_st8_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'abdullahi.bello@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Abdullahi bello Muhamed","matric_number":"ENG/2024/32969"}', NOW(), NOW())
     ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
         encrypted_password = EXCLUDED.encrypted_password;
@@ -48,14 +50,15 @@ BEGIN
         (v_admin_id, 'Academic Registry Administrator', NULL, 'admin@fudma.edu.ng', 'admin', 'Academic Planning & Registry', 'Staff', 'active', NOW(), NOW()),
         -- Lecturer
         (v_lecturer_id, 'Malam Nura Muhammad', NULL, 'nura.muhammad@fudma.edu.ng', 'lecturer', 'Faculty of Engineering', 'Faculty', 'active', NOW(), NOW()),
-        -- 7 Official Students
+        -- 8 Official Students
         (v_st1_id, 'Nura HAMZA MASARI', 'ENG/2025/37401', 'nura.masari@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
         (v_st2_id, 'Abdullahi Nuhu', 'ENG/2024/31912', 'abdullahi.nuhu@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
         (v_st3_id, 'Adamu Jibril', 'ENG/2024/32388', 'adamu.jibril@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
         (v_st4_id, 'Dahiru Umar Karofi', 'ENG/2024/34360', 'dahiru.karofi@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
         (v_st5_id, 'OLOYEDE PROMISE ISSAC', 'ENG/2024/35303', 'oloyede.promise@fudma.edu.ng', 'student', 'Mechatronics', '400L', 'active', NOW(), NOW()),
         (v_st6_id, 'TAIYE JOHN OLONITOLA', 'ENG/2024/34750', 'taiye.olonitola@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
-        (v_st7_id, 'BAKIR MUHAMMAD MUSTAPHA', 'ENG/2024/35485', 'bakir.mustapha@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW())
+        (v_st7_id, 'BAKIR MUHAMMAD MUSTAPHA', 'ENG/2024/35485', 'bakir.mustapha@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
+        (v_st8_id, 'Abdullahi bello Muhamed', 'ENG/2024/32969', 'abdullahi.bello@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW())
     ON CONFLICT (id) DO UPDATE SET
         full_name = EXCLUDED.full_name,
         matric_number = EXCLUDED.matric_number,
@@ -83,7 +86,7 @@ BEGIN
         course_title = EXCLUDED.course_title,
         lecturer_id = EXCLUDED.lecturer_id;
 
-    -- 4. ENROLL ALL 7 STUDENTS IN GET 411
+    -- 4. ENROLL ALL 8 STUDENTS IN GET 411
     INSERT INTO public.course_enrollments (course_id, student_id, enrolled_at)
     VALUES
         ('course_get411', v_st1_id, NOW()),
@@ -92,7 +95,8 @@ BEGIN
         ('course_get411', v_st4_id, NOW()),
         ('course_get411', v_st5_id, NOW()),
         ('course_get411', v_st6_id, NOW()),
-        ('course_get411', v_st7_id, NOW())
+        ('course_get411', v_st7_id, NOW()),
+        ('course_get411', v_st8_id, NOW())
     ON CONFLICT (course_id, student_id) DO NOTHING;
 
     -- 5. SEED ACTIVE LECTURE SESSION

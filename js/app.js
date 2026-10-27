@@ -251,7 +251,7 @@ class Application {
         ${isMock ? `
           <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-200);">
             <div style="font-size: 0.78rem; font-weight: 700; color: var(--gray-500); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">
-              ⚡ Quick Demo Accounts (7 Students & Faculty)
+              ⚡ Quick Demo Accounts (8 Students & Faculty)
             </div>
             <div style="display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; padding-right: 4px;">
               <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('lecturer')">
@@ -259,6 +259,9 @@ class Application {
               </button>
               <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student5')">
                 🎓 <strong>OLOYEDE PROMISE ISSAC</strong> (ENG/2024/35303) — Mechatronics
+              </button>
+              <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student8')">
+                🎓 <strong>Abdullahi bello Muhamed</strong> (ENG/2024/32969)
               </button>
               <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student1')">
                 🎓 <strong>Nura HAMZA MASARI</strong> (ENG/2025/37401)

@@ -15,7 +15,8 @@ class ProjectInfoController {
       { id: 4, name: 'Dahiru Umar Karofi', matricNumber: 'ENG/2024/34360', role: 'Hardware Interface & QR Code Engine', dept: 'Engineering' },
       { id: 5, name: 'OLOYEDE PROMISE ISSAC', matricNumber: 'ENG/2024/35303', role: 'Frontend UI/UX & Responsive Design', dept: 'Mechatronics' },
       { id: 6, name: 'TAIYE JOHN OLONITOLA', matricNumber: 'ENG/2024/34750', role: 'Quality Assurance & Assessment Testing', dept: 'Engineering' },
-      { id: 7, name: 'BAKIR MUHAMMAD MUSTAPHA', matricNumber: 'ENG/2024/35485', role: 'Security Rules & Documentation', dept: 'Engineering' }
+      { id: 7, name: 'BAKIR MUHAMMAD MUSTAPHA', matricNumber: 'ENG/2024/35485', role: 'Security Rules & Documentation', dept: 'Engineering' },
+      { id: 8, name: 'Abdullahi bello Muhamed', matricNumber: 'ENG/2024/32969', role: 'Embedded Systems & Mobile Verification', dept: 'Engineering' }
     ];
   }
 
@@ -24,8 +25,7 @@ class ProjectInfoController {
       const saved = localStorage.getItem(STORAGE_KEY_TEAM_MEMBERS);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Refresh if saved data contains placeholders or lacks the 7 members
-        if (Array.isArray(parsed) && parsed.length >= 7 && parsed.some(m => (m.matricNumber || '').includes('35303'))) {
+        if (Array.isArray(parsed) && parsed.length >= 7) {
           let modified = false;
           parsed.forEach(m => {
             if ((m.matricNumber || '').includes('35303') && m.dept !== 'Mechatronics') {
@@ -33,6 +33,17 @@ class ProjectInfoController {
               modified = true;
             }
           });
+          // Ensure Abdullahi bello Muhamed is in the team roster
+          if (!parsed.some(m => (m.matricNumber || '').includes('32969'))) {
+            parsed.push({
+              id: 8,
+              name: 'Abdullahi bello Muhamed',
+              matricNumber: 'ENG/2024/32969',
+              role: 'Embedded Systems & Mobile Verification',
+              dept: 'Engineering'
+            });
+            modified = true;
+          }
           if (modified) this.saveTeamMembers(parsed);
           return parsed;
         }

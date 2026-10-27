@@ -237,3 +237,4 @@ The team should verify the following before presenting the application:
 | 5 | **OLOYEDE PROMISE ISSAC** | `ENG/2024/35303` | Mechatronics | Frontend UI/UX & Responsive Design |
 | 6 | **TAIYE JOHN OLONITOLA** | `ENG/2024/34750` | Engineering | Quality Assurance & Assessment Testing |
 | 7 | **BAKIR MUHAMMAD MUSTAPHA** | `ENG/2024/35485` | Engineering | Security Rules & Documentation |
+| 8 | **Abdullahi bello Muhamed** | `ENG/2024/32969` | Engineering | Embedded Systems & Mobile Verification |
