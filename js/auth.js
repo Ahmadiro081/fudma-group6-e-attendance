@@ -604,8 +604,8 @@ class AuthService {
       user = await window.dbService.getUserById('student_003'); // Adamu Jibril (ENG/2024/32388)
     } else if (roleOrUid === 'student4' || roleOrUid === 'karofi') {
       user = await window.dbService.getUserById('student_004'); // Dahiru Umar Karofi (ENG/2024/34360)
-    } else if (roleOrUid === 'student5' || roleOrUid === 'promise' || roleOrUid === 'oloyede') {
-      user = await window.dbService.getUserById('student_005'); // OLOYEDE PROMISE ISSAC (ENG/2024/35303)
+    } else if (roleOrUid === 'student5' || roleOrUid === 'promise' || roleOrUid === 'oloyede' || roleOrUid === '35303' || roleOrUid === 'ENG/2024/35303' || roleOrUid === 'mechatronics') {
+      user = await window.dbService.getUserById('student_005'); // OLOYEDE PROMISE ISSAC (ENG/2024/35303) - Mechatronics
     } else if (roleOrUid === 'student6' || roleOrUid === 'taiye' || roleOrUid === 'olonitola') {
       user = await window.dbService.getUserById('student_006'); // TAIYE JOHN OLONITOLA (ENG/2024/34750)
     } else if (roleOrUid === 'student7' || roleOrUid === 'bakir' || roleOrUid === 'mustapha') {

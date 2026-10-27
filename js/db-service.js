@@ -145,7 +145,7 @@ class DbService {
           matricNumber: 'ENG/2024/35303',
           email: 'oloyede.promise@fudma.edu.ng',
           role: 'student',
-          department: 'Engineering',
+          department: 'Mechatronics',
           level: '400L',
           status: 'active',
           createdAt: '2026-09-02T10:20:00Z'
@@ -431,7 +431,7 @@ class DbService {
           matricNumber: 'ENG/2024/35303',
           email: 'oloyede.promise@fudma.edu.ng',
           role: 'student',
-          department: 'Engineering',
+          department: 'Mechatronics',
           level: '400L',
           status: 'active',
           createdAt: '2026-09-02T10:20:00Z'
@@ -469,6 +469,21 @@ class DbService {
           c.enrolledStudentIds = Array.from(new Set([...(c.enrolledStudentIds || []), ...studentIds]));
         });
         this._setLocal(this.collections.courses, storedCourses);
+      }
+    }
+
+    // Ensure Oloyede Promise Issac department is updated to Mechatronics in stored users
+    const currentUsers = this._getLocal(this.collections.users);
+    if (currentUsers && currentUsers.length > 0) {
+      let updatedUser = false;
+      currentUsers.forEach(u => {
+        if ((u.matricNumber || '').toUpperCase().includes('35303') && u.department !== 'Mechatronics') {
+          u.department = 'Mechatronics';
+          updatedUser = true;
+        }
+      });
+      if (updatedUser) {
+        this._setLocal(this.collections.users, currentUsers);
       }
     }
   }

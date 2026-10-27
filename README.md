@@ -228,12 +228,12 @@ The team should verify the following before presenting the application:
 
 ### Group 6 Members
 
-| S/N | Full Name | Matriculation Number | Role |
-| :---: | :--- | :--- | :--- |
-| 1 | **Nura HAMZA MASARI** | `ENG/2025/37401` | Team Lead / Full-Stack Integration |
-| 2 | **Abdullahi Nuhu** | `ENG/2024/31912` | System Analysis & Requirements |
-| 3 | **Adamu Jibril** | `ENG/2024/32388` | Database & Supabase Architecture |
-| 4 | **Dahiru Umar Karofi** | `ENG/2024/34360` | Hardware Interface & QR Code Engine |
-| 5 | **OLOYEDE PROMISE ISSAC** | `ENG/2024/35303` | Frontend UI/UX & Responsive Design |
-| 6 | **TAIYE JOHN OLONITOLA** | `ENG/2024/34750` | Quality Assurance & Assessment Testing |
-| 7 | **BAKIR MUHAMMAD MUSTAPHA** | `ENG/2024/35485` | Security Rules & Documentation |
+| S/N | Full Name | Matriculation Number | Department | Role |
+| :---: | :--- | :--- | :--- | :--- |
+| 1 | **Nura HAMZA MASARI** | `ENG/2025/37401` | Engineering | Team Lead / Full-Stack Integration |
+| 2 | **Abdullahi Nuhu** | `ENG/2024/31912` | Engineering | System Analysis & Requirements |
+| 3 | **Adamu Jibril** | `ENG/2024/32388` | Engineering | Database & Supabase Architecture |
+| 4 | **Dahiru Umar Karofi** | `ENG/2024/34360` | Engineering | Hardware Interface & QR Code Engine |
+| 5 | **OLOYEDE PROMISE ISSAC** | `ENG/2024/35303` | Mechatronics | Frontend UI/UX & Responsive Design |
+| 6 | **TAIYE JOHN OLONITOLA** | `ENG/2024/34750` | Engineering | Quality Assurance & Assessment Testing |
+| 7 | **BAKIR MUHAMMAD MUSTAPHA** | `ENG/2024/35485` | Engineering | Security Rules & Documentation |

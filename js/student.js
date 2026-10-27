@@ -31,7 +31,7 @@ class StudentController {
               <small style="color: var(--gray-500); display: block; margin-bottom: 8px;">Or instant demo switch (Presentation Engine):</small>
               <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
                 <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student5')">
-                  OLOYEDE PROMISE ISSAC (ENG/2024/35303)
+                  OLOYEDE PROMISE ISSAC (ENG/2024/35303) — Mechatronics
                 </button>
                 <button class="btn btn-secondary btn-sm" onclick="window.authService.quickSwitch('student1')">
                   Nura HAMZA MASARI (ENG/2025/37401)

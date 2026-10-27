@@ -13,7 +13,7 @@ class ProjectInfoController {
       { id: 2, name: 'Abdullahi Nuhu', matricNumber: 'ENG/2024/31912', role: 'System Analysis & Requirements', dept: 'Engineering' },
       { id: 3, name: 'Adamu Jibril', matricNumber: 'ENG/2024/32388', role: 'Database & Cloud Firestore Architecture', dept: 'Engineering' },
       { id: 4, name: 'Dahiru Umar Karofi', matricNumber: 'ENG/2024/34360', role: 'Hardware Interface & QR Code Engine', dept: 'Engineering' },
-      { id: 5, name: 'OLOYEDE PROMISE ISSAC', matricNumber: 'ENG/2024/35303', role: 'Frontend UI/UX & Responsive Design', dept: 'Engineering' },
+      { id: 5, name: 'OLOYEDE PROMISE ISSAC', matricNumber: 'ENG/2024/35303', role: 'Frontend UI/UX & Responsive Design', dept: 'Mechatronics' },
       { id: 6, name: 'TAIYE JOHN OLONITOLA', matricNumber: 'ENG/2024/34750', role: 'Quality Assurance & Assessment Testing', dept: 'Engineering' },
       { id: 7, name: 'BAKIR MUHAMMAD MUSTAPHA', matricNumber: 'ENG/2024/35485', role: 'Security Rules & Documentation', dept: 'Engineering' }
     ];
@@ -26,6 +26,14 @@ class ProjectInfoController {
         const parsed = JSON.parse(saved);
         // Refresh if saved data contains placeholders or lacks the 7 members
         if (Array.isArray(parsed) && parsed.length >= 7 && parsed.some(m => (m.matricNumber || '').includes('35303'))) {
+          let modified = false;
+          parsed.forEach(m => {
+            if ((m.matricNumber || '').includes('35303') && m.dept !== 'Mechatronics') {
+              m.dept = 'Mechatronics';
+              modified = true;
+            }
+          });
+          if (modified) this.saveTeamMembers(parsed);
           return parsed;
         }
       }
@@ -243,6 +251,10 @@ class ProjectInfoController {
             <input type="text" class="form-control team-edit-matric" data-idx="${idx}" value="${m.matricNumber}" required />
           </div>
           <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem;">Department</label>
+            <input type="text" class="form-control team-edit-dept" data-idx="${idx}" value="${m.dept || 'Engineering'}" placeholder="e.g. Mechatronics" required />
+          </div>
+          <div class="form-group" style="margin: 0;">
             <label style="font-size: 0.75rem;">Project Role</label>
             <input type="text" class="form-control team-edit-role" data-idx="${idx}" value="${m.role}" required />
           </div>
@@ -253,7 +265,7 @@ class ProjectInfoController {
     window.app.openModal('Edit Group 6 Team Members', `
       <form id="edit-team-form" onsubmit="window.projectInfoCtrl.handleSaveTeam(event)">
         <p style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 16px;">
-          Update the member names and official matriculation numbers for Group 6:
+          Update the member names, departments, and official matriculation numbers for Group 6:
         </p>
         <div style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
           ${rowsHtml}
@@ -270,6 +282,7 @@ class ProjectInfoController {
     e.preventDefault();
     const names = document.querySelectorAll('.team-edit-name');
     const matrics = document.querySelectorAll('.team-edit-matric');
+    const depts = document.querySelectorAll('.team-edit-dept');
     const roles = document.querySelectorAll('.team-edit-role');
 
     const updated = [];
@@ -279,7 +292,7 @@ class ProjectInfoController {
         name: nameEl.value.trim(),
         matricNumber: matrics[idx].value.trim(),
         role: roles[idx].value.trim(),
-        dept: 'Engineering'
+        dept: depts[idx] ? depts[idx].value.trim() : 'Engineering'
       });
     });
 

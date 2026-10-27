@@ -258,7 +258,7 @@ class Application {
                 👨‍🏫 <strong>Malam Nura Muhammad</strong> (Lecturer - GET 411)
               </button>
               <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student5')">
-                🎓 <strong>OLOYEDE PROMISE ISSAC</strong> (ENG/2024/35303)
+                🎓 <strong>OLOYEDE PROMISE ISSAC</strong> (ENG/2024/35303) — Mechatronics
               </button>
               <button class="btn btn-secondary btn-sm" style="justify-content: flex-start; text-align: left;" onclick="window.app.quickLogin('student1')">
                 🎓 <strong>Nura HAMZA MASARI</strong> (ENG/2025/37401)

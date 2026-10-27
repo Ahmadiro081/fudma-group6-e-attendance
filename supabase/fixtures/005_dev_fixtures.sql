@@ -33,7 +33,7 @@ BEGIN
         (v_st2_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'abdullahi.nuhu@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Abdullahi Nuhu","matric_number":"ENG/2024/31912"}', NOW(), NOW()),
         (v_st3_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'adamu.jibril@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Adamu Jibril","matric_number":"ENG/2024/32388"}', NOW(), NOW()),
         (v_st4_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dahiru.karofi@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"Dahiru Umar Karofi","matric_number":"ENG/2024/34360"}', NOW(), NOW()),
-        (v_st5_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'oloyede.promise@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"OLOYEDE PROMISE ISSAC","matric_number":"ENG/2024/35303"}', NOW(), NOW()),
+        (v_st5_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'oloyede.promise@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"OLOYEDE PROMISE ISSAC","matric_number":"ENG/2024/35303","department":"Mechatronics"}', NOW(), NOW()),
         (v_st6_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'taiye.olonitola@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"TAIYE JOHN OLONITOLA","matric_number":"ENG/2024/34750"}', NOW(), NOW()),
         (v_st7_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'bakir.mustapha@fudma.edu.ng', v_enc_pass, NOW(), '{"provider":"email","providers":["email"]}', '{"full_name":"BAKIR MUHAMMAD MUSTAPHA","matric_number":"ENG/2024/35485"}', NOW(), NOW())
     ON CONFLICT (id) DO UPDATE SET
@@ -53,7 +53,7 @@ BEGIN
         (v_st2_id, 'Abdullahi Nuhu', 'ENG/2024/31912', 'abdullahi.nuhu@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
         (v_st3_id, 'Adamu Jibril', 'ENG/2024/32388', 'adamu.jibril@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
         (v_st4_id, 'Dahiru Umar Karofi', 'ENG/2024/34360', 'dahiru.karofi@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
-        (v_st5_id, 'OLOYEDE PROMISE ISSAC', 'ENG/2024/35303', 'oloyede.promise@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
+        (v_st5_id, 'OLOYEDE PROMISE ISSAC', 'ENG/2024/35303', 'oloyede.promise@fudma.edu.ng', 'student', 'Mechatronics', '400L', 'active', NOW(), NOW()),
         (v_st6_id, 'TAIYE JOHN OLONITOLA', 'ENG/2024/34750', 'taiye.olonitola@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW()),
         (v_st7_id, 'BAKIR MUHAMMAD MUSTAPHA', 'ENG/2024/35485', 'bakir.mustapha@fudma.edu.ng', 'student', 'Faculty of Engineering', '400L', 'active', NOW(), NOW())
     ON CONFLICT (id) DO UPDATE SET
@@ -61,6 +61,7 @@ BEGIN
         matric_number = EXCLUDED.matric_number,
         email = EXCLUDED.email,
         role = EXCLUDED.role,
+        department = EXCLUDED.department,
         status = EXCLUDED.status,
         updated_at = NOW();
 
